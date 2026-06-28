@@ -1,8 +1,8 @@
 """
 Motor del torneo — Elo + Monte Carlo + puntaje.
 Híbrido: el modelo proyecta todo el cuadro; el admin registra partidos reales
-por etapa (BracketFixture) que sustituyen el emparejamiento proyectado, y
-carga resultados (Result) que determinan ganadores y puntos.
+por etapa (BracketFixture) y carga resultados (Result) que determinan
+ganadores, puntos, estado (vivo/eliminado) y el rival probable siguiente.
 """
 import math
 import random
@@ -88,6 +88,46 @@ class Engine:
                     ai_picks[r][i] = a if pa >= 0.5 else b
                     prob_f[r][i] = {a: pa, b: 1 - pa}
         return ai_picks, prob_f
+
+    # ---- estado y rival probable ----
+    def status_of(self, team):
+        if self._lock(4, 0) == team:
+            return "champ"
+        rounds = self.resolve("fav")["rounds"]
+        for r in range(5):
+            for i, m in enumerate(rounds[r]):
+                if team in (m.get("a"), m.get("b")):
+                    lk = self._lock(r, i)
+                    if lk and lk != team:
+                        return "out"
+        return "alive"
+
+    def next_match(self, team):
+        """Próximo partido del equipo: rival probable (modelo si está pendiente)."""
+        if self.status_of(team) == "out":
+            return None
+        rounds = self.resolve("fav")["rounds"]
+        for r in range(5):
+            for i, m in enumerate(rounds[r]):
+                a, b = m.get("a"), m.get("b")
+                if team in (a, b) and not self._lock(r, i):
+                    opp = b if a == team else a
+                    if not opp:
+                        return None
+                    pending = False
+                    if r >= 1:
+                        feeders = [2 * i, 2 * i + 1]
+                        team_feeder = next((f for f in feeders if self._lock(r - 1, f) == team), None)
+                        opp_feeders = [f for f in feeders if f != team_feeder]
+                        opp_feeder = opp_feeders[0] if opp_feeders else None
+                        pending = (opp_feeder is None) or (not self._lock(r - 1, opp_feeder))
+                    return {
+                        "round": r, "index": i, "opponent": opp,
+                        "my_prob": round(self.p_win(team, opp) * 100),
+                        "pending": pending,
+                        "round_label": ROUND_LABELS[r],
+                    }
+        return None
 
     @staticmethod
     def surprise(p):

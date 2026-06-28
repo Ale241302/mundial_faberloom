@@ -119,21 +119,22 @@ def team_detail(request, name):
     if not team:
         return Response(status=status.HTTP_404_NOT_FOUND)
     eng = build_engine()
-    reach = eng.simulate(2000).get(name)
     data = TeamSerializer(team).data
-    data["reach"] = reach
+    data["reach"] = eng.simulate(2000).get(name)
+    st = eng.status_of(name)
+    data["status"] = st                       # alive | out | champ
+    nm = eng.next_match(name) if st != "out" else None
+    data["next_match"] = nm                    # {opponent, my_prob, pending, round_label}
 
-    if request.query_params.get("ai") == "1":
-        fx = Fixture.objects.filter(team_a=team).first() or Fixture.objects.filter(team_b=team).first()
-        if fx:
-            a, b = fx.team_a.name, fx.team_b.name
-            pa = eng.p_win(a, b)
-            data["projection"] = kimi_projection(
-                a, b, pa,
-                (Team.objects.get(name=a)).stats,
-                (Team.objects.get(name=b)).stats,
-                lang=request.query_params.get("lang", "es"),
-            )
+    # IA Kimi: solo proyecta equipos VIVOS, sobre su próximo rival probable
+    if request.query_params.get("ai") == "1" and st != "out" and nm:
+        opp = nm["opponent"]
+        opp_team = Team.objects.filter(name=opp).first()
+        data["projection"] = kimi_projection(
+            name, opp, eng.p_win(name, opp),
+            team.stats, (opp_team.stats if opp_team else {}),
+            lang=request.query_params.get("lang", "es"),
+        )
     return Response(data)
 
 
