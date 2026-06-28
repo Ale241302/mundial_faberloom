@@ -153,6 +153,10 @@ def save_prediction(request):
         return Response({"detail": "Las apuestas de esta etapa están cerradas."},
                         status=status.HTTP_400_BAD_REQUEST)
     i = int(request.data.get("index"))
+    # partido ya jugado (resultado cargado) => pronóstico bloqueado
+    if Result.objects.filter(round=r, index=i).exists():
+        return Response({"detail": "Ese partido ya se jugó; el pronóstico está bloqueado."},
+                        status=status.HTTP_400_BAD_REQUEST)
     pred, _ = Prediction.objects.update_or_create(
         user=request.user, round=r, index=i,
         defaults={

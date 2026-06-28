@@ -11,9 +11,9 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [boot, setBoot] = useState(null);
   const [engine, setEngine] = useState(null);
-  const [predictions, setPredictions] = useState({}); // {round:{index:{pick,goal_a,goal_b,pen}}}
-  const [mode, setMode] = useState("pick");            // pick | result (admin)
-  const [modal, setModal] = useState(null);            // {type, data}
+  const [predictions, setPredictions] = useState({});
+  const [mode, setMode] = useState("pick");
+  const [modal, setModal] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
   const toastTimer = useRef(null);
 
@@ -45,7 +45,6 @@ export function AppProvider({ children }) {
     return data;
   }, []);
 
-  // sesión inicial
   useEffect(() => {
     (async () => {
       if (getToken()) {
@@ -68,7 +67,6 @@ export function AppProvider({ children }) {
     await loadBoot();
   }, [loadBoot]);
 
-  // ---- interacción del cuadro (picks de usuario / locks de admin) ----
   const isAdmin = !!(user && user.is_admin);
 
   const persistPick = useCallback(async (r, i, patch, notify) => {
@@ -88,17 +86,19 @@ export function AppProvider({ children }) {
         if (!isAdmin) { toast("Solo el administrador registra resultados"); return; }
         const cur = engine.lock(r, i);
         const p = cur === team
-          ? API.adminResultDelete({ round: r, index: i })   // toggle off
+          ? API.adminResultDelete({ round: r, index: i })
           : API.adminResult({ round: r, index: i, winner: team });
         p.then(() => loadBoot()).catch((e) => toast(e.message));
         return;
       }
       if (!user) { setModal({ type: "register" }); return; }
+      if (engine && engine.lock(r, i)) { toast("Ese partido ya se jugó · bloqueado"); return; }
       if (boot && !boot.state.rounds_enabled[String(r)]) { toast("Las apuestas de esta etapa están cerradas"); return; }
       persistPick(r, i, { pick: team });
     },
     goal: (r, i, side, val, m) => {
       if (!user) { setModal({ type: "register" }); return; }
+      if (engine && engine.lock(r, i)) { toast("Ese partido ya se jugó · bloqueado"); return; }
       const g = { ...(predictions[r]?.[i] || {}) };
       g["goal_" + side] = val === "" ? null : Math.max(0, parseInt(val, 10) || 0);
       const a = g.goal_a, b = g.goal_b, both = a != null && a !== "" && b != null && b !== "";
@@ -111,6 +111,16 @@ export function AppProvider({ children }) {
     },
     pen: (r, i, team) => {
       persistPick(r, i, { pen: team, pick: team });
+    },
+    reset: (r, i) => {
+      if (engine && engine.lock(r, i)) { toast("Ese partido ya se jugó · bloqueado"); return; }
+      setPredictions((prev) => {
+        const n = { ...prev };
+        if (n[r]) { const rr = { ...n[r] }; delete rr[i]; n[r] = rr; }
+        return n;
+      });
+      API.savePrediction({ round: r, index: i, pick: "", goal_a: null, goal_b: null, pen: "" })
+        .catch((e) => toast(e.message));
     },
     adminScore: (r, i, m, a, b) => {
       if (a === "" || b === "") return;

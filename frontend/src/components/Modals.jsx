@@ -34,7 +34,6 @@ function PwInput({ id, value, onChange, ph }) {
   );
 }
 
-/* ---------------- Login (SIN pista de admin) ---------------- */
 function LoginModal({ onClose }) {
   const { afterAuth, setModal, toast } = useApp();
   const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
@@ -60,7 +59,6 @@ function LoginModal({ onClose }) {
   );
 }
 
-/* ---------------- Registro ---------------- */
 function RegisterModal({ onClose }) {
   const { lang, afterAuth, setModal, toast } = useApp();
   const [name, setName] = useState(""); const [email, setEmail] = useState("");
@@ -93,7 +91,6 @@ function RegisterModal({ onClose }) {
   );
 }
 
-/* ---------------- Recuperar ---------------- */
 function RecoverModal({ onClose }) {
   const { setModal } = useApp();
   const [email, setEmail] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
@@ -115,7 +112,6 @@ function RecoverModal({ onClose }) {
   );
 }
 
-/* ---------------- Reset ---------------- */
 function ResetModal({ token, onClose }) {
   const { lang, afterAuth, toast } = useApp();
   const lx = LX(lang);
@@ -153,7 +149,6 @@ function ResetModal({ token, onClose }) {
   );
 }
 
-/* ---------------- Perfil + ranking ---------------- */
 function ProfileModal({ onClose }) {
   const { lang, engine, predictions } = useApp();
   const l = L(lang);
@@ -182,7 +177,6 @@ function ProfileModal({ onClose }) {
   );
 }
 
-/* lista de pronósticos por etapa — con MARCADOR (goles) */
 function PredList({ onBack, onClose }) {
   const { lang, engine, boot, predictions, mc } = useApp();
   const l = L(lang);
@@ -193,23 +187,33 @@ function PredList({ onBack, onClose }) {
       <button className="ghost sm" style={{ marginBottom: 10 }} onClick={onBack}>← Volver</button>
       {[0, 1, 2, 3, 4].map((r) => {
         const enabled = boot.state.rounds_enabled[String(r)];
+        const proj = r > 0 && !engine.confirmed(r, 0);
         const ms = R[r] || [];
         return (
           <div key={r}>
-            <div className="plstage">{ROUND_LABELS[lang][r]}{enabled ? "" : " · cerrada"}{engine.confirmed(r, 0) || r === 0 ? "" : " · proyección"}</div>
+            <div className="plstage">{ROUND_LABELS[lang][r]}{enabled ? "" : " · cerrada"}{proj ? " · proyección" : ""}</div>
             {ms.map((m, i) => {
               if (!m.a || !m.b) return <div className="plrow" key={i}><span className="plteams" style={{ opacity: .5 }}>{l.tbd}</span></div>;
               const g = predictions[r]?.[i] || {};
               const up = g.pick;
+              const locked = engine.lock(r, i);
+              const rsc = engine.score(r, i);
+              const hasPred = up || g.goal_a != null || g.goal_b != null;
               return (
                 <div className="plrow" key={i}>
                   <span className="plteams"><Flag team={m.a} /> {m.a} <span style={{ color: "var(--taupe)" }}>vs</span> <Flag team={m.b} /> {m.b}</span>
-                  {enabled ? (
+                  {locked ? (
+                    <span className="plpick" style={{ alignItems: "center" }}>
+                      <span className="cerrado">Jugado{rsc ? " " + rsc : ""}</span>
+                      <span className="plwin">✓ {locked}</span>
+                    </span>
+                  ) : enabled ? (
                     <span className="plpick" style={{ alignItems: "center" }}>
                       <input className="plg" type="number" min="0" value={g.goal_a != null ? g.goal_a : ""} onChange={(e) => mc.goal(r, i, "a", e.target.value, m)} aria-label={"goles " + m.a} />
                       <span className="dash">–</span>
                       <input className="plg" type="number" min="0" value={g.goal_b != null ? g.goal_b : ""} onChange={(e) => mc.goal(r, i, "b", e.target.value, m)} aria-label={"goles " + m.b} />
                       {up && <span className="plwin">✓ {up}</span>}
+                      {hasPred && <button className="ghost sm" title="Reiniciar este pronóstico" style={{ padding: "3px 7px" }} onClick={() => mc.reset(r, i)}>↺</button>}
                     </span>
                   ) : <span className="cerrado">{up ? "✓ " + up : "-"}</span>}
                 </div>
@@ -222,9 +226,8 @@ function PredList({ onBack, onClose }) {
   );
 }
 
-/* ---------------- Admin ---------------- */
 function AdminModal({ onClose }) {
-  const { setMode, loadBoot, boot, toast } = useApp();
+  const { setMode, boot, toast } = useApp();
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState([]);
   useEffect(() => { if (tab === "users") API.adminUsers().then(setUsers).catch(() => {}); }, [tab]);
@@ -264,7 +267,7 @@ function AdminModal({ onClose }) {
       {tab === "results" && (
         <>
           <div className="note" style={{ marginBottom: 12 }}>
-            En el cuadro, modo <b>Resultados</b>, marca el ganador real y el marcador de cada cruce (avanza y se recalculan los puntos).
+            En el cuadro, modo <b>Resultados</b>, marca el ganador real y el marcador de cada cruce. Al cargar el resultado, ese partido queda <b>jugado</b> y se bloquea para los usuarios.
           </div>
           <button className="coral" onClick={() => { setMode("result"); onClose(); toast("Modo resultados: marca ganadores en el cuadro"); }}>
             Ir a cargar resultados en el cuadro
@@ -275,7 +278,6 @@ function AdminModal({ onClose }) {
   );
 }
 
-/* pestaña Partidos: abrir/cerrar etapas + registrar partidos por etapa */
 function PartidosTab() {
   const { boot, engine, loadBoot } = useApp();
   const teams = Object.keys(boot.teams).sort();
@@ -283,12 +285,10 @@ function PartidosTab() {
   const counts = [16, 8, 4, 2, 1];
   const [round, setRound] = useState(1);
   const R = engine.resolve("fav").rounds;
-
   const toggleRound = async (r) => {
     const en = !boot.state.rounds_enabled[String(r)];
     await API.adminRound({ round: r, enabled: en }); await loadBoot();
   };
-
   return (
     <>
       <div className="note" style={{ marginBottom: 8 }}>Abrir / cerrar apuestas por etapa:</div>
@@ -301,7 +301,6 @@ function PartidosTab() {
           </div>
         );
       })}
-
       <div className="plstage" style={{ marginTop: 16 }}>Registrar partidos</div>
       <div className="note" style={{ marginBottom: 8 }}>16vos ya están. Octavos en adelante se muestran como proyección del modelo hasta que confirmes los equipos reales aquí.</div>
       <div className="fltabs" style={{ marginBottom: 10 }}>
