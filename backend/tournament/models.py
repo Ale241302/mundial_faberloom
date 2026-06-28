@@ -56,6 +56,8 @@ class Result(models.Model):
     index = models.PositiveSmallIntegerField()
     winner = models.CharField(max_length=60)
     score = models.CharField(max_length=12, blank=True)
+    status = models.CharField(max_length=12, default="finished")  # scheduled|live|finished
+    minute = models.CharField(max_length=8, blank=True)           # "73'" si en vivo
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

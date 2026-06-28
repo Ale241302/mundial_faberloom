@@ -14,5 +14,6 @@ urlpatterns = [
     path("admin/result/", views.admin_result),
     path("admin/round/", views.admin_round),
     path("admin/fixture/", views.admin_fixture),
+    path("admin/sync-fifa/", views.admin_sync_fifa),
     path("admin/resolve/", views.admin_resolve),
 ]

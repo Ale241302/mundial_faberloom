@@ -180,3 +180,11 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+# Sincronización automática de resultados FIFA cada 2 minutos
+CELERY_BEAT_SCHEDULE = {
+    "sync-fifa-results": {
+        "task": "tournament.tasks.sync_fifa_results",
+        "schedule": 120.0,
+    },
+}

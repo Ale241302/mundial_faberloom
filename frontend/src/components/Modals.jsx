@@ -227,7 +227,7 @@ function PredList({ onBack, onClose }) {
 }
 
 function AdminModal({ onClose }) {
-  const { setMode, boot, toast } = useApp();
+  const { setMode, boot, toast, loadBoot } = useApp();
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState([]);
   useEffect(() => { if (tab === "users") API.adminUsers().then(setUsers).catch(() => {}); }, [tab]);
@@ -272,6 +272,12 @@ function AdminModal({ onClose }) {
           <button className="coral" onClick={() => { setMode("result"); onClose(); toast("Modo resultados: marca ganadores en el cuadro"); }}>
             Ir a cargar resultados en el cuadro
           </button>
+          <div style={{ height: 10 }} />
+          <div className="note" style={{ marginBottom: 6 }}>O trae los resultados reales de FIFA automáticamente:</div>
+          <button className="ghost" onClick={async () => {
+            try { const r = await API.adminSyncFifa(); await loadBoot(); toast(`FIFA: ${r.updated} partidos actualizados`); }
+            catch (e) { toast(e.message); }
+          }}>↻ Sincronizar resultados de FIFA ahora</button>
         </>
       )}
     </Modal>

@@ -1,6 +1,5 @@
-// Motor cliente — resuelve el cuadro desde los datos de la API (mismo
-// algoritmo que el backend). Aplica overrides (partidos registrados por el
-// admin) y locks (resultados reales). Sin datos quemados.
+// Motor cliente — resuelve el cuadro desde la API. Aplica overrides (partidos
+// registrados por el admin) y locks (resultados reales). Sin datos quemados.
 export const BASE_PTS = [1, 2, 3, 5, 8];
 export const EXACT_BONUS = [1, 2, 3, 4, 5];
 
@@ -14,25 +13,19 @@ export function makeEngine(boot) {
     .sort((a, b) => a.match_no - b.match_no)
     .map((f) => ({ a: f.team_a, b: f.team_b, id: String(f.match_no) }));
 
-  const elo = (t) => {
-    const x = teams[t];
-    return x ? x.elo + (x.host ? 55 : 0) : 1700;
-  };
+  const elo = (t) => { const x = teams[t]; return x ? x.elo + (x.host ? 55 : 0) : 1700; };
   const pWin = (a, b) => 1 / (1 + Math.pow(10, -(elo(a) - elo(b)) / 400));
   const ov = (r, i) => overrides[r]?.[i] || overrides[String(r)]?.[String(i)];
-  const lock = (r, i) => results[r]?.[i]?.winner || results[String(r)]?.[String(i)]?.winner;
-  const score = (r, i) => results[r]?.[i]?.score || results[String(r)]?.[String(i)]?.score || "";
+  const resultOf = (r, i) => results[r]?.[i] || results[String(r)]?.[String(i)] || null;
+  const lock = (r, i) => (resultOf(r, i) || {}).winner || "";
+  const score = (r, i) => (resultOf(r, i) || {}).score || "";
+  const statusOf = (r, i) => (resultOf(r, i) || {}).status || "";
+  const played = (r, i) => { const s = statusOf(r, i); return s === "live" || s === "finished"; };
   const dateOf = (r, i) => ov(r, i)?.date_label || "";
   const confirmed = (r, i) => !!ov(r, i)?.confirmed || !!lock(r, i);
 
   function applyOverride(r, cur) {
-    cur.forEach((m, i) => {
-      const o = ov(r, i);
-      if (o) {
-        if (o.team_a) m.a = o.team_a;
-        if (o.team_b) m.b = o.team_b;
-      }
-    });
+    cur.forEach((m, i) => { const o = ov(r, i); if (o) { if (o.team_a) m.a = o.team_a; if (o.team_b) m.b = o.team_b; } });
   }
 
   function resolve(mode = "fav") {
@@ -47,9 +40,7 @@ export function makeEngine(boot) {
         const lk = lock(r, i);
         if (lk) x = lk;
         else if (m.a && m.b)
-          x = mode === "sample"
-            ? (Math.random() < pWin(m.a, m.b) ? m.a : m.b)
-            : (pWin(m.a, m.b) >= 0.5 ? m.a : m.b);
+          x = mode === "sample" ? (Math.random() < pWin(m.a, m.b) ? m.a : m.b) : (pWin(m.a, m.b) >= 0.5 ? m.a : m.b);
         winners.push(x);
       });
       if (r < 4) {
@@ -74,7 +65,7 @@ export function makeEngine(boot) {
       Object.keys(locks).forEach((i) => {
         const real = locks[i].winner;
         const up = ups[i];
-        if (!up) return;
+        if (!up || !real) return;
         if (up.pick && up.pick === real) {
           const p = (probF[r]?.[i] || probF[String(r)]?.[String(i)] || {})[up.pick] || 0.5;
           pts += BASE_PTS[r] * surprise(p);
@@ -89,5 +80,5 @@ export function makeEngine(boot) {
     return Math.round(pts);
   }
 
-  return { teams, round0, elo, pWin, lock, score, dateOf, confirmed, resolve, scoreUser, surprise };
+  return { teams, round0, elo, pWin, lock, score, statusOf, played, resultOf, dateOf, confirmed, resolve, scoreUser, surprise };
 }

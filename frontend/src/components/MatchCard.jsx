@@ -12,12 +12,13 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const known = m.a && m.b;
   const pa = known ? engine.pWin(m.a, m.b) : 0.5;
   const lk = engine.lock(r, i);
-  const sc = engine.score(r, i);
+  const res = engine.resultOf(r, i);
+  const isPlayed = engine.played(r, i);          // en juego o finalizado
   const up = predictions[r]?.[i]?.pick;
   const g = predictions[r]?.[i] || {};
   const ap = boot.ai_picks?.[r]?.[i] || boot.ai_picks?.[String(r)]?.[String(i)];
   const open = r === boot.state.round_open;
-  const canPredict = mode === "pick" && known && !lk;   // jugado => bloqueado
+  const canPredict = mode === "pick" && known && !lk && !isPlayed;
   const realCompact = compact && r <= 2 && known;
   const roundOpenResult = open && mode === "result" && known && isAdmin;
 
@@ -29,10 +30,8 @@ export default function MatchCard({ r, i, m, compact, column }) {
       ? `${g.goal_a}–${g.goal_b}` : "";
   const tie = predScore && Number(g.goal_a) === Number(g.goal_b);
 
-  const dateLabel = r === 0
-    ? (boot.fixtures.find((f) => String(f.match_no) === String(m.id))?.date_label || "")
-    : (engine.dateOf(r, i) || "");
-  const label = column ? dateLabel : (r === 0 ? (dateLabel || ROUND_LABELS[lang][0]) : ROUND_LABELS[lang][r]);
+  // En columnas (desktop) la card es idéntica a octavos: sin línea de etapa/fecha.
+  const label = column ? "" : (r === 0 ? ROUND_LABELS[lang][0] : ROUND_LABELS[lang][r]);
 
   const CSide = ({ team }) => {
     if (!team) return <div className="cmps" style={{ opacity: 0.4 }}>·</div>;
@@ -41,7 +40,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
       <div className={"cmps " + clsFor(team)} onClick={() => mc.pick(r, i, team, m)}>
         <Flag team={team} />
         <span className="tnm" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team}</span>
-        {ap === team && open && <span className="tagai">{l.ai}</span>}
+        {ap === team && open && !isPlayed && <span className="tagai">{l.ai}</span>}
         <span className="pc">{pc}</span>
       </div>
     );
@@ -54,7 +53,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
         <span className="nm">
           <Flag team={team} />
           <span className="tnm">{team}</span>
-          {ap === team && open && <span className="tagai">{l.ai}</span>}
+          {ap === team && open && !isPlayed && <span className="tagai">{l.ai}</span>}
         </span>
       </div>
     );
@@ -75,17 +74,14 @@ export default function MatchCard({ r, i, m, compact, column }) {
     <motion.div
       id={`mt_${r}_${i}`}
       layout
-      whileHover={{ y: -2 }}
+      whileHover={isPlayed ? {} : { y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (open && !lk ? " live" : "")}
+      className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (isPlayed ? " played" : "")}
     >
-      {(label || predScore || sc) && (
+      {(label || predScore) && (
         <div className="rnd">
           <span>{label}</span>
-          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {predScore && <span style={{ color: "var(--coral)" }}>{predScore}</span>}
-            {sc && <span>{sc}</span>}
-          </span>
+          {predScore && <span style={{ color: "var(--coral)" }}>{predScore}</span>}
         </div>
       )}
 
@@ -124,7 +120,14 @@ export default function MatchCard({ r, i, m, compact, column }) {
         </>
       )}
 
-      {roundOpenResult && <AdminScore r={r} i={i} m={m} sc={sc} />}
+      {res && res.score && (
+        <div className={"realres" + (res.status === "live" ? " livenow" : "")}>
+          <span className="rl">{res.status === "live" ? ("EN JUEGO" + (res.minute ? " " + res.minute : "")) : "Resultado"}</span>
+          <span className="rv">{res.score}</span>
+        </div>
+      )}
+
+      {roundOpenResult && <AdminScore r={r} i={i} m={m} sc={engine.score(r, i)} />}
     </motion.div>
   );
 }

@@ -50,7 +50,7 @@ services:
     build: ./backend
     container_name: mundial-celery
     restart: unless-stopped
-    command: celery -A config worker -l info
+    command: celery -A config worker -B -l info
     env_file: .env
     environment:
       POSTGRES_HOST: mundial-db

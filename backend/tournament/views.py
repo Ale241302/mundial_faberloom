@@ -60,6 +60,7 @@ def bootstrap(request):
     for r in Result.objects.all():
         results.setdefault(str(r.round), {})[str(r.index)] = {
             "winner": r.winner, "score": r.score,
+            "status": getattr(r, "status", "finished"), "minute": getattr(r, "minute", ""),
         }
 
     # partidos registrados por el admin (override del modelo)
@@ -318,6 +319,20 @@ def admin_fixture(request):
         },
     )
     return Response({"ok": True})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_sync_fifa(request):
+    """Trae resultados reales de FIFA al instante (botón del panel)."""
+    if not _is_admin(request):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    try:
+        from .fifa import sync_results
+        n, logs = sync_results()
+        return Response({"updated": n, "logs": logs[:40]})
+    except Exception as e:
+        return Response({"detail": f"Error FIFA: {e}"}, status=status.HTTP_502_BAD_GATEWAY)
 
 
 @api_view(["POST"])
