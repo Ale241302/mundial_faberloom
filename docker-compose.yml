@@ -1,0 +1,63 @@
+# =====================================================================
+#  Mundial FaberLoom — proyecto independiente (mundial.faberloom.ai)
+#  Puertos elegidos para NO chocar con faber_loom (8200/3200/5435/6381).
+# =====================================================================
+services:
+  mundial-db:
+    image: postgres:16-alpine
+    container_name: mundial-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mundial}
+      POSTGRES_USER: ${POSTGRES_USER:-mundial}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mundial}
+    volumes:
+      - mundial_pg:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+
+  mundial-redis:
+    image: redis:7-alpine
+    container_name: mundial-redis
+    restart: unless-stopped
+    ports:
+      - "6382:6379"
+
+  mundial-api:
+    build: ./backend
+    container_name: mundial-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: mundial-db
+      REDIS_URL: redis://mundial-redis:6379/0
+    depends_on:
+      - mundial-db
+      - mundial-redis
+    ports:
+      - "8300:8000"
+
+  mundial-web:
+    build: ./frontend
+    container_name: mundial-web
+    restart: unless-stopped
+    depends_on:
+      - mundial-api
+    ports:
+      - "3300:3000"
+
+  mundial-celery:
+    build: ./backend
+    container_name: mundial-celery
+    restart: unless-stopped
+    command: celery -A config worker -l info
+    env_file: .env
+    environment:
+      POSTGRES_HOST: mundial-db
+      REDIS_URL: redis://mundial-redis:6379/0
+    depends_on:
+      - mundial-api
+      - mundial-redis
+
+volumes:
+  mundial_pg:

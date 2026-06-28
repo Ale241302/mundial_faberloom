@@ -1,0 +1,27 @@
+name: Deploy a VPS
+
+# Cada push a main entra por SSH al VPS, hace git pull y redeploy del Docker.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy por SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            if [ ! -d /opt/mundial_faberloom ]; then
+              git clone https://github.com/Ale241302/mundial_faberloom.git /opt/mundial_faberloom
+            fi
+            cd /opt/mundial_faberloom
+            git pull origin main
+            bash scripts/redeploy_vps.sh

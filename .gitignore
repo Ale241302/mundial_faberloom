@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/staticfiles/
+backend/emails/preview/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Entorno
+.env
+
+# Bundle / diseño / temporales (no van al repo)
+*.bundle
+uploads/
+.thumbnail
+*.thumbnail
+Simulador Mundial 2026 - FaberLoom.html

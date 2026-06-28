@@ -1,0 +1,134 @@
+import { useState } from "react";
+import { Iso } from "./ui.jsx";
+import Bracket from "./Bracket.jsx";
+import MasterTable from "./MasterTable.jsx";
+import VsBar from "./VsBar.jsx";
+import { L, LX } from "../lib/i18n.js";
+import { useApp } from "../lib/store.jsx";
+
+export default function Simulator() {
+  const {
+    lang, setLang, boot, user, isAdmin, mode, setMode,
+    setModal, loadBoot, logout, toast,
+  } = useApp();
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!boot) {
+    return (
+      <div className="center-screen">
+        <div style={{ textAlign: "center", color: "var(--taupe)" }}>
+          <Iso size={40} /><div style={{ marginTop: 10, fontFamily: "var(--mono)", fontSize: 12 }}>Cargando…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const l = L(lang), lx = LX(lang);
+  const openTeam = (name) => setModal({ type: "team", data: { name } });
+  const title = l.htitle.replace("IA", "·IA·"); // marcamos para resaltar
+
+  const monteCarlo = async () => { setBusy(true); try { await loadBoot(6000); toast("Monte Carlo · 6000 simulaciones"); } finally { setBusy(false); } };
+
+  return (
+    <div className="wrap">
+      {/* top */}
+      <div className="top">
+        <div className="brand">
+          <Iso /><span><span className="faber">Faber</span><span className="loom">Loom</span></span>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div className="lang">
+            {["es", "en", "fr"].map((g) => (
+              <button key={g} className={lang === g ? "on" : ""} onClick={() => setLang(g)}>{g.toUpperCase()}</button>
+            ))}
+          </div>
+          <AuthBar />
+        </div>
+      </div>
+
+      {/* hero */}
+      <div className="hero">
+        <span className="live"><span className="dot" />{l.live}</span>
+        <h1 dangerouslySetInnerHTML={{ __html: l.htitle.replace(/\b(IA|AI)\b/, "<em>$1</em>") }} />
+        <div className="hsub">{l.hsub}</div>
+      </div>
+
+      <div className="onb">
+        {l.onb.map((o, i) => <div key={i}><b>{i + 1}</b> {o}</div>)}
+      </div>
+
+      <VsBar />
+
+      {/* toolbar */}
+      <div className="bar">
+        <button className={mode === "pick" ? "on" : "ghost"} onClick={() => setMode("pick")}>{l.mybr}</button>
+        {isAdmin ? (
+          <button className={mode === "result" ? "on" : "ghost"} onClick={() => setMode("result")}>{l.loadres}</button>
+        ) : (
+          <button className="ghost" onClick={() => setModal(user ? { type: "profile" } : { type: "login" })}>
+            {lx.profile}
+          </button>
+        )}
+        <button className="ghost" onClick={monteCarlo} disabled={busy}>▶ Monte Carlo</button>
+        <span style={{ flex: 1 }} />
+        <input placeholder={l.search} value={query} onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 180 }} />
+      </div>
+
+      {/* points panel */}
+      <div className="points">
+        <b>{lx.ptitle}.</b> {lx.pdesc}
+        <div className="pr">
+          <span>{lx.prounds}: 16avos 1 · 8vos 2 · 4tos 3 · Semis 5 · Final 8</span>
+          <span>{lx.psurp}</span>
+        </div>
+      </div>
+
+      {/* bracket */}
+      <div className="sec">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+          <h3 style={{ margin: 0 }}>{l.mybr}</h3>
+        </div>
+        <Bracket onOpenTeam={openTeam} />
+      </div>
+
+      {/* master table */}
+      <div className="sec">
+        <h3>{l.mktmodel}</h3>
+        <MasterTable query={query} onOpenTeam={openTeam} />
+      </div>
+
+      {/* whatis */}
+      <div className="whatis">
+        <h3>{l.whatis}</h3>
+        <div style={{ fontSize: 13, opacity: 0.92 }}>{l.whatistxt}</div>
+        <button onClick={() => setModal(user ? { type: "profile" } : { type: "register" })}>faberloom.ai</button>
+      </div>
+
+      <div className="foot">
+        Datos: swarm <b>Kimi</b> · motor Monte Carlo por Elo, no predicción · la "IA" es este mismo motor. mundial.faberloom.ai
+      </div>
+    </div>
+  );
+}
+
+function AuthBar() {
+  const { lang, user, isAdmin, setModal, logout } = useApp();
+  const lx = LX(lang);
+  if (!user)
+    return (
+      <div className="authbar">
+        <button className="ghost sm" onClick={() => setModal({ type: "login" })}>{lx.login}</button>
+        <button className="coral sm" onClick={() => setModal({ type: "register" })}>{lx.register}</button>
+      </div>
+    );
+  return (
+    <div className="authbar">
+      <span className="ubadge">{isAdmin ? "★ " : ""}{user.name || user.email}</span>
+      {isAdmin
+        ? <button className="ghost sm" onClick={() => setModal({ type: "admin" })}>{lx.admin}</button>
+        : <button className="ghost sm" onClick={() => setModal({ type: "profile" })}>{lx.profile}</button>}
+      <button className="ghost sm" onClick={logout}>{lx.logout}</button>
+    </div>
+  );
+}

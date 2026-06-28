@@ -1,0 +1,41 @@
+{% extends "emails/base.html" %}
+{% block title %}Pronóstico registrado{% endblock %}
+{% block preheader %}Registramos tu pronóstico: {{ pick }}.{% endblock %}
+{% block content %}
+
+<h1 style="margin:0 0 6px 0;font-family:Georgia,'EB Garamond',serif;font-weight:500;font-size:28px;line-height:1.1;color:#1F1E1C;">
+  Pronóstico <span style="font-style:italic;color:#C96442;">registrado</span>.
+</h1>
+<p style="margin:0 0 18px 0;color:#1F1E1C;font-size:15px;">
+  Hola {{ name }}, guardamos tu elección para este cruce.
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 22px 0;">
+  <tr><td style="background:#EDE8DF;border:1px solid #D8D0C0;border-radius:10px;padding:16px 18px;">
+    <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8A8278;margin-bottom:8px;">
+      {{ round_label }}
+    </div>
+    <div style="font-size:17px;color:#1F1E1C;">
+      {{ team_a }} <span style="color:#8A8278;">vs</span> {{ team_b }}
+    </div>
+    <div style="margin-top:10px;font-size:14px;color:#1F1E1C;">
+      Tu ganador:
+      <strong style="color:#C96442;">{{ pick }}</strong>{% if score %}
+      &middot; marcador <strong style="font-family:'Courier New',monospace;">{{ score }}</strong>{% endif %}
+    </div>
+  </td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+  <td style="border-radius:8px;background:#C96442;">
+    <a href="{{ cta_url }}" style="display:inline-block;padding:11px 24px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#F4F1ED;text-decoration:none;border-radius:8px;">
+      Ver mi cuadro &rarr;
+    </a>
+  </td>
+</tr></table>
+
+<p style="margin:20px 0 0 0;font-size:12px;color:#8A8278;">
+  Podés cambiar tu pronóstico mientras la etapa siga abierta.
+</p>
+
+{% endblock %}

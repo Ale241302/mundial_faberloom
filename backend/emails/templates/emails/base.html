@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>{% block title %}FaberLoom{% endblock %}</title>
+</head>
+<!--
+  FaberLoom · Simulador Mundial 2026 — plantilla de correo
+  Paleta de marca (Diseños): coral #C96442 · ink #1F1E1C · paper #F4F1ED
+  paper2 #EDE8DF · line #D8D0C0 · taupe #8A8278
+  Tipografía: serif EB Garamond (fallback Georgia) · mono (fallback monospace)
+  Estilos en línea por compatibilidad con clientes de correo.
+-->
+<body style="margin:0;padding:0;background:#EDE8DF;background-image:repeating-linear-gradient(45deg,rgba(201,100,66,.03) 0 1px,transparent 1px 12px);-webkit-text-size-adjust:100%;">
+<div style="display:none;font-size:1px;color:#EDE8DF;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{% block preheader %}La IA ya predijo todo el Mundial. Tu trabajo es ganarle.{% endblock %}</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EDE8DF;padding:28px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#F4F1ED;border:1px solid #D8D0C0;border-radius:16px;overflow:hidden;">
+
+    <!-- ===== Cabecera / marca ===== -->
+    <tr><td style="padding:26px 32px 18px 32px;border-bottom:1px solid #D8D0C0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td style="vertical-align:middle;">
+          <!-- isotipo (tejido) -->
+          <img src="{{ site_url }}/isotipo.png" width="26" height="26" alt=""
+               style="vertical-align:middle;margin-right:9px;border:0;outline:none;display:inline-block;"
+               onerror="this.style.display='none'">
+          <span style="font-family:Georgia,'EB Garamond',serif;font-style:italic;font-size:21px;vertical-align:middle;">
+            <span style="color:#C96442;">Faber</span><span style="color:#1F1E1C;">Loom</span>
+          </span>
+        </td>
+        <td align="right" style="vertical-align:middle;font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#8A8278;text-transform:uppercase;">
+          Simulador Mundial 2026
+        </td>
+      </tr></table>
+    </td></tr>
+
+    <!-- ===== Contenido ===== -->
+    <tr><td style="padding:30px 32px 26px 32px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1F1E1C;font-size:15px;line-height:1.6;">
+      {% block content %}{% endblock %}
+    </td></tr>
+
+    <!-- ===== Pie ===== -->
+    <tr><td style="padding:18px 32px 26px 32px;border-top:1px solid #D8D0C0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#8A8278;line-height:1.6;">
+      Datos: swarm <strong style="color:#8A8278;">Kimi</strong> · motor Monte Carlo por Elo, no predicción.<br>
+      <a href="{{ site_url }}" style="color:#C96442;text-decoration:none;">{{ site_url_label }}</a>
+      &middot; <span style="font-style:italic;">la IA prepara, vos tejés.</span>
+      {% block footer_extra %}{% endblock %}
+    </td></tr>
+
+  </table>
+
+  <div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:10px;color:#8A8278;margin-top:14px;">
+    FaberLoom · {{ site_url_label }}
+  </div>
+
+</td></tr>
+</table>
+</body>
+</html>
