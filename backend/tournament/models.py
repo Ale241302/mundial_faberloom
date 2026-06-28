@@ -119,3 +119,13 @@ class Prediction(models.Model):
     class Meta:
         unique_together = ("user", "round", "index")
         ordering = ["round", "index"]
+
+
+class ClosedMatch(models.Model):
+    """Partido cerrado para pronósticos (por partido, no por etapa)."""
+    round = models.PositiveSmallIntegerField()
+    index = models.PositiveSmallIntegerField()
+
+    class Meta:
+        unique_together = ("round", "index")
+        ordering = ["round", "index"]

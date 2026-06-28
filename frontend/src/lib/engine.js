@@ -8,6 +8,7 @@ export function makeEngine(boot) {
   const fixtures = boot.fixtures;
   const results = boot.results || {};
   const overrides = boot.overrides || {};
+  const closedM = boot.closed_matches || {};
 
   const round0 = [...fixtures]
     .sort((a, b) => a.match_no - b.match_no)
@@ -21,6 +22,7 @@ export function makeEngine(boot) {
   const score = (r, i) => (resultOf(r, i) || {}).score || "";
   const statusOf = (r, i) => (resultOf(r, i) || {}).status || "";
   const played = (r, i) => { const s = statusOf(r, i); return s === "live" || s === "finished"; };
+  const closed = (r, i) => !!(closedM[r]?.[i] || closedM[String(r)]?.[String(i)]);
   const dateOf = (r, i) => ov(r, i)?.date_label || "";
   const confirmed = (r, i) => !!ov(r, i)?.confirmed || !!lock(r, i);
 
@@ -80,5 +82,5 @@ export function makeEngine(boot) {
     return Math.round(pts);
   }
 
-  return { teams, round0, elo, pWin, lock, score, statusOf, played, resultOf, dateOf, confirmed, resolve, scoreUser, surprise };
+  return { teams, round0, elo, pWin, lock, score, statusOf, played, closed, resultOf, dateOf, confirmed, resolve, scoreUser, surprise };
 }

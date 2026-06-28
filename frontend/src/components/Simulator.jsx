@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Iso } from "./ui.jsx";
 import Bracket from "./Bracket.jsx";
 import MasterTable from "./MasterTable.jsx";
@@ -7,12 +6,7 @@ import { L, LX } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
 export default function Simulator() {
-  const {
-    lang, setLang, boot, user, isAdmin, mode, setMode,
-    setModal, loadBoot, logout, toast,
-  } = useApp();
-  const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { lang, setLang, boot, user, isAdmin, mode, setMode, setModal } = useApp();
 
   if (!boot) {
     return (
@@ -26,13 +20,9 @@ export default function Simulator() {
 
   const l = L(lang), lx = LX(lang);
   const openTeam = (name) => setModal({ type: "team", data: { name } });
-  const title = l.htitle.replace("IA", "·IA·"); // marcamos para resaltar
-
-  const monteCarlo = async () => { setBusy(true); try { await loadBoot(6000); toast("Monte Carlo · 6000 simulaciones"); } finally { setBusy(false); } };
 
   return (
     <div className="wrap">
-      {/* top */}
       <div className="top">
         <div className="brand">
           <Iso /><span><span className="faber">Faber</span><span className="loom">Loom</span></span>
@@ -47,7 +37,6 @@ export default function Simulator() {
         </div>
       </div>
 
-      {/* hero */}
       <div className="hero">
         <span className="live"><span className="dot" />{l.live}</span>
         <h1 dangerouslySetInnerHTML={{ __html: l.htitle.replace(/\b(IA|AI)\b/, "<em>$1</em>") }} />
@@ -60,22 +49,15 @@ export default function Simulator() {
 
       <VsBar />
 
-      {/* toolbar */}
       <div className="bar">
         <button className={mode === "pick" ? "on" : "ghost"} onClick={() => setMode("pick")}>{l.mybr}</button>
         {isAdmin ? (
           <button className={mode === "result" ? "on" : "ghost"} onClick={() => setMode("result")}>{l.loadres}</button>
         ) : (
-          <button className="ghost" onClick={() => setModal(user ? { type: "profile" } : { type: "login" })}>
-            {lx.profile}
-          </button>
+          <button className="ghost" onClick={() => setModal(user ? { type: "profile" } : { type: "login" })}>{lx.profile}</button>
         )}
-        <button className="ghost" onClick={monteCarlo} disabled={busy}>▶ Monte Carlo</button>
-        <span style={{ flex: 1 }} />
-        <input placeholder={l.search} value={query} onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 180 }} />
       </div>
 
-      {/* points panel */}
       <div className="points">
         <b>{lx.ptitle}.</b> {lx.pdesc}
         <div className="pr">
@@ -84,7 +66,6 @@ export default function Simulator() {
         </div>
       </div>
 
-      {/* bracket */}
       <div className="sec">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
           <h3 style={{ margin: 0 }}>{l.mybr}</h3>
@@ -92,13 +73,11 @@ export default function Simulator() {
         <Bracket onOpenTeam={openTeam} />
       </div>
 
-      {/* master table */}
       <div className="sec">
         <h3>{l.mktmodel}</h3>
-        <MasterTable query={query} onOpenTeam={openTeam} />
+        <MasterTable query="" onOpenTeam={openTeam} />
       </div>
 
-      {/* whatis */}
       <div className="whatis">
         <h3>{l.whatis}</h3>
         <div style={{ fontSize: 13, opacity: 0.92 }}>{l.whatistxt}</div>

@@ -37,4 +37,7 @@ export const API = {
   adminFixture: (b) => api.post(`/admin/fixture/`, b),
   adminFixtureDelete: (b) => api.del(`/admin/fixture/`, b),
   adminSyncFifa: () => api.post(`/admin/sync-fifa/`),
+  adminMatchLock: (b) => api.post(`/admin/match-lock/`, b),
+  adminPredictions: () => api.get(`/admin/predictions/`),
+  adminPredictionDelete: (id) => api.del(`/admin/predictions/${id}/`),
 };

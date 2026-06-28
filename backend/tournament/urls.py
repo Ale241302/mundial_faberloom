@@ -15,5 +15,9 @@ urlpatterns = [
     path("admin/round/", views.admin_round),
     path("admin/fixture/", views.admin_fixture),
     path("admin/sync-fifa/", views.admin_sync_fifa),
+    path("admin/match-lock/", views.admin_match_lock),
+    path("admin/predictions/", views.admin_predictions),
+    path("admin/predictions/<int:pid>/", views.admin_prediction_delete),
+
     path("admin/resolve/", views.admin_resolve),
 ]

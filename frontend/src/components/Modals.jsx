@@ -23,12 +23,11 @@ export default function Modals() {
   );
 }
 
-function PwInput({ id, value, onChange, ph }) {
+function PwInput({ id, value, onChange }) {
   const [show, setShow] = useState(false);
   return (
     <div className="pwrap">
-      <input id={id} className="fl-in" type={show ? "text" : "password"}
-        value={value} onChange={onChange} placeholder={ph} autoComplete="new-password" />
+      <input id={id} className="fl-in" type={show ? "text" : "password"} value={value} onChange={onChange} autoComplete="new-password" />
       <button type="button" className="eyebtn" onClick={() => setShow((s) => !s)} aria-label="ver"><Eye /></button>
     </div>
   );
@@ -47,8 +46,7 @@ function LoginModal({ onClose }) {
     <Modal onClose={onClose}>
       <div className="flhd"><b>Iniciar sesión</b><span className="x" onClick={onClose}>✕</span></div>
       <label className="fl-l">Correo</label>
-      <input className="fl-in" type="text" value={email} autoComplete="username"
-        onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+      <input className="fl-in" type="text" value={email} autoComplete="username" onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
       <label className="fl-l">Contraseña</label>
       <PwInput id="lgP" value={pass} onChange={(e) => setPass(e.target.value)} />
       <div className="fl-err">{err}</div>
@@ -118,9 +116,7 @@ function ResetModal({ token, onClose }) {
   const [valid, setValid] = useState(null); const [email, setEmail] = useState("");
   const [p1, setP1] = useState(""); const [p2, setP2] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    API.resetValidate(token).then((r) => { setValid(true); setEmail(r.email || ""); }).catch(() => setValid(false));
-  }, [token]);
+  useEffect(() => { API.resetValidate(token).then((r) => { setValid(true); setEmail(r.email || ""); }).catch(() => setValid(false)); }, [token]);
   const submit = async () => {
     setErr("");
     if (p1.length < 6) return setErr("La contraseña debe tener al menos 6 caracteres");
@@ -186,17 +182,16 @@ function PredList({ onBack, onClose }) {
       <div className="flhd"><b>Mis pronósticos</b><span className="x" onClick={onClose}>✕</span></div>
       <button className="ghost sm" style={{ marginBottom: 10 }} onClick={onBack}>← Volver</button>
       {[0, 1, 2, 3, 4].map((r) => {
-        const enabled = boot.state.rounds_enabled[String(r)];
-        const proj = r > 0 && !engine.confirmed(r, 0);
         const ms = R[r] || [];
         return (
           <div key={r}>
-            <div className="plstage">{ROUND_LABELS[lang][r]}{enabled ? "" : " · cerrada"}{proj ? " · proyección" : ""}</div>
+            <div className="plstage">{ROUND_LABELS[lang][r]}</div>
             {ms.map((m, i) => {
               if (!m.a || !m.b) return <div className="plrow" key={i}><span className="plteams" style={{ opacity: .5 }}>{l.tbd}</span></div>;
               const g = predictions[r]?.[i] || {};
               const up = g.pick;
-              const locked = engine.lock(r, i);
+              const locked = engine.lock(r, i) || engine.played(r, i);
+              const closed = engine.closed(r, i);
               const rsc = engine.score(r, i);
               const hasPred = up || g.goal_a != null || g.goal_b != null;
               return (
@@ -205,9 +200,9 @@ function PredList({ onBack, onClose }) {
                   {locked ? (
                     <span className="plpick" style={{ alignItems: "center" }}>
                       <span className="cerrado">Jugado{rsc ? " " + rsc : ""}</span>
-                      <span className="plwin">✓ {locked}</span>
+                      {engine.lock(r, i) && <span className="plwin">✓ {engine.lock(r, i)}</span>}
                     </span>
-                  ) : enabled ? (
+                  ) : closed ? <span className="cerrado">Cerrado{up ? " · ✓ " + up : ""}</span> : (
                     <span className="plpick" style={{ alignItems: "center" }}>
                       <input className="plg" type="number" min="0" value={g.goal_a != null ? g.goal_a : ""} onChange={(e) => mc.goal(r, i, "a", e.target.value, m)} aria-label={"goles " + m.a} />
                       <span className="dash">–</span>
@@ -215,7 +210,7 @@ function PredList({ onBack, onClose }) {
                       {up && <span className="plwin">✓ {up}</span>}
                       {hasPred && <button className="ghost sm" title="Reiniciar este pronóstico" style={{ padding: "3px 7px" }} onClick={() => mc.reset(r, i)}>↺</button>}
                     </span>
-                  ) : <span className="cerrado">{up ? "✓ " + up : "-"}</span>}
+                  )}
                 </div>
               );
             })}
@@ -227,7 +222,7 @@ function PredList({ onBack, onClose }) {
 }
 
 function AdminModal({ onClose }) {
-  const { setMode, boot, toast, loadBoot } = useApp();
+  const { setMode, toast, loadBoot } = useApp();
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState([]);
   useEffect(() => { if (tab === "users") API.adminUsers().then(setUsers).catch(() => {}); }, [tab]);
@@ -241,6 +236,7 @@ function AdminModal({ onClose }) {
       <div className="fltabs">
         <button className={tab === "users" ? "on" : ""} onClick={() => setTab("users")}>Usuarios</button>
         <button className={tab === "matches" ? "on" : ""} onClick={() => setTab("matches")}>Partidos</button>
+        <button className={tab === "preds" ? "on" : ""} onClick={() => setTab("preds")}>Pronósticos</button>
         <button className={tab === "results" ? "on" : ""} onClick={() => setTab("results")}>Resultados</button>
       </div>
 
@@ -263,17 +259,17 @@ function AdminModal({ onClose }) {
       )}
 
       {tab === "matches" && <PartidosTab />}
+      {tab === "preds" && <PredsTab />}
 
       {tab === "results" && (
         <>
           <div className="note" style={{ marginBottom: 12 }}>
-            En el cuadro, modo <b>Resultados</b>, marca el ganador real y el marcador de cada cruce. Al cargar el resultado, ese partido queda <b>jugado</b> y se bloquea para los usuarios.
+            En el cuadro, modo <b>Resultados</b>, marca el ganador real y el marcador. O trae los resultados reales de FIFA.
           </div>
           <button className="coral" onClick={() => { setMode("result"); onClose(); toast("Modo resultados: marca ganadores en el cuadro"); }}>
             Ir a cargar resultados en el cuadro
           </button>
           <div style={{ height: 10 }} />
-          <div className="note" style={{ marginBottom: 6 }}>O trae los resultados reales de FIFA automáticamente:</div>
           <button className="ghost" onClick={async () => {
             try { const r = await API.adminSyncFifa(); await loadBoot(); toast(`FIFA: ${r.updated} partidos actualizados`); }
             catch (e) { toast(e.message); }
@@ -284,46 +280,60 @@ function AdminModal({ onClose }) {
   );
 }
 
+/* Pronósticos: ver todos, quién, cuándo, partido y eliminar */
+function PredsTab() {
+  const { toast } = useApp();
+  const [rows, setRows] = useState(null);
+  const load = () => API.adminPredictions().then(setRows).catch(() => setRows([]));
+  useEffect(() => { load(); }, []);
+  const del = async (id) => { if (!confirm("¿Eliminar este pronóstico? El usuario podrá volver a hacerlo.")) return; await API.adminPredictionDelete(id); toast("Pronóstico eliminado"); load(); };
+  if (!rows) return <div className="note">Cargando…</div>;
+  if (!rows.length) return <div className="note">Aún no hay pronósticos.</div>;
+  return (
+    <table className="utbl">
+      <thead><tr><th>Usuario</th><th>Partido</th><th>Pronóstico</th><th>Cuándo</th><th></th></tr></thead>
+      <tbody>{rows.map((p) => (
+        <tr key={p.id}>
+          <td>{p.user}<div style={{ fontSize: 11, color: "var(--taupe)" }}>{p.email}</div></td>
+          <td style={{ fontSize: 12 }}>{p.round_label}<div style={{ color: "var(--taupe)" }}>{p.team_a || "?"} vs {p.team_b || "?"}</div></td>
+          <td style={{ fontFamily: "var(--mono)" }}>{p.pick || "-"}{p.score ? " · " + p.score : ""}</td>
+          <td style={{ fontSize: 11, color: "var(--taupe)" }}>{new Date(p.updated_at).toLocaleString()}</td>
+          <td><button className="ghost" style={{ color: "var(--red)" }} onClick={() => del(p.id)}>Eliminar</button></td>
+        </tr>
+      ))}</tbody>
+    </table>
+  );
+}
+
+/* Partidos: registrar equipos por etapa + abrir/cerrar POR PARTIDO */
 function PartidosTab() {
-  const { boot, engine, loadBoot } = useApp();
+  const { boot, engine } = useApp();
   const teams = Object.keys(boot.teams).sort();
   const labels = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinal", "Final"];
-  const counts = [16, 8, 4, 2, 1];
-  const [round, setRound] = useState(1);
+  const [round, setRound] = useState(0);
   const R = engine.resolve("fav").rounds;
-  const toggleRound = async (r) => {
-    const en = !boot.state.rounds_enabled[String(r)];
-    await API.adminRound({ round: r, enabled: en }); await loadBoot();
-  };
+  const ms = R[round] || [];
   return (
     <>
-      <div className="note" style={{ marginBottom: 8 }}>Abrir / cerrar apuestas por etapa:</div>
-      {[0, 1, 2, 3, 4].map((r) => {
-        const en = boot.state.rounds_enabled[String(r)];
-        return (
-          <div className="plrow" key={r}>
-            <span className="plteams">{labels[r]}</span>
-            <label className="sw"><input type="checkbox" checked={!!en} onChange={() => toggleRound(r)} /><span className="tk" /><span>{en ? "Abierta" : "Cerrada"}</span></label>
-          </div>
-        );
-      })}
-      <div className="plstage" style={{ marginTop: 16 }}>Registrar partidos</div>
-      <div className="note" style={{ marginBottom: 8 }}>16vos ya están. Octavos en adelante se muestran como proyección del modelo hasta que confirmes los equipos reales aquí.</div>
+      <div className="note" style={{ marginBottom: 8 }}>
+        Abre/cierra y registra partidos. El cierre es <b>por partido</b>. 16vos ya tienen equipos; octavos en adelante se muestran como proyección hasta que confirmes.
+      </div>
       <div className="fltabs" style={{ marginBottom: 10 }}>
-        {[1, 2, 3, 4].map((r) => (
+        {[0, 1, 2, 3, 4].map((r) => (
           <button key={r} className={round === r ? "on" : ""} onClick={() => setRound(r)}>{labels[r]}</button>
         ))}
       </div>
-      {Array.from({ length: counts[round] }).map((_, i) => (
-        <FixtureRow key={round + "-" + i} round={round} index={i} teams={teams} model={(R[round] || [])[i] || {}} />
+      {ms.map((m, i) => (
+        <MatchAdminRow key={round + "-" + i} round={round} index={i} model={m || {}} teams={teams} />
       ))}
     </>
   );
 }
 
-function FixtureRow({ round, index, teams, model }) {
+function MatchAdminRow({ round, index, model, teams }) {
   const { boot, loadBoot, toast } = useApp();
   const ov = boot.overrides?.[String(round)]?.[String(index)];
+  const closed = !!(boot.closed_matches?.[String(round)]?.[String(index)]);
   const [a, setA] = useState(ov?.team_a || model.a || "");
   const [b, setB] = useState(ov?.team_b || model.b || "");
   const [date, setDate] = useState(ov?.date_label || "");
@@ -333,20 +343,33 @@ function FixtureRow({ round, index, teams, model }) {
     try { await API.adminFixture({ round, index, team_a: a, team_b: b, date_label: date }); await loadBoot(); toast("Partido guardado"); }
     finally { setBusy(false); }
   };
-  const clear = async () => { await API.adminFixtureDelete({ round, index }); await loadBoot(); toast("Partido quitado"); };
+  const toggleClose = async () => {
+    await API.adminMatchLock({ round, index, closed: !closed });
+    await loadBoot();
+    toast(closed ? "Partido abierto" : "Partido cerrado");
+  };
   return (
     <div className="plrow" style={{ gap: 6, flexWrap: "wrap" }}>
       <span style={{ fontFamily: "var(--mono)", color: "var(--taupe)", width: 18 }}>{index + 1}</span>
-      <select className="fl-in" style={{ flex: 1, minWidth: 110 }} value={a} onChange={(e) => setA(e.target.value)}>
-        <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
-      </select>
-      <span style={{ color: "var(--taupe)" }}>vs</span>
-      <select className="fl-in" style={{ flex: 1, minWidth: 110 }} value={b} onChange={(e) => setB(e.target.value)}>
-        <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
-      </select>
-      <input className="fl-in" style={{ width: 120 }} placeholder="fecha · sede" value={date} onChange={(e) => setDate(e.target.value)} />
-      <button className="coral sm" disabled={busy} onClick={save}>Guardar</button>
-      {ov && <button className="ghost sm" onClick={clear}>Quitar</button>}
+      {round >= 1 ? (
+        <>
+          <select className="fl-in" style={{ flex: 1, minWidth: 100 }} value={a} onChange={(e) => setA(e.target.value)}>
+            <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <span style={{ color: "var(--taupe)" }}>vs</span>
+          <select className="fl-in" style={{ flex: 1, minWidth: 100 }} value={b} onChange={(e) => setB(e.target.value)}>
+            <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <input className="fl-in" style={{ width: 100 }} placeholder="fecha · sede" value={date} onChange={(e) => setDate(e.target.value)} />
+          <button className="coral sm" disabled={busy} onClick={save}>Guardar</button>
+        </>
+      ) : (
+        <span className="plteams"><Flag team={model.a} /> {model.a} <span style={{ color: "var(--taupe)" }}>vs</span> <Flag team={model.b} /> {model.b}</span>
+      )}
+      <label className="sw" style={{ marginLeft: "auto" }}>
+        <input type="checkbox" checked={!closed} onChange={toggleClose} /><span className="tk" />
+        <span>{closed ? "Cerrado" : "Abierto"}</span>
+      </label>
     </div>
   );
 }

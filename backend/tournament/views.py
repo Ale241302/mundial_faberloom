@@ -6,10 +6,10 @@ from rest_framework.response import Response
 
 from accounts.serializers import UserSerializer
 from emails.service import send_prediction_email
-from .engine import build_engine, BASE
+from .engine import build_engine, BASE, ROUND_LABELS
 from .kimi import projection as kimi_projection, commentary as kimi_commentary
 from .models import (
-    Team, Fixture, MarketOdds, Result, TournamentState, Prediction, BracketFixture,
+    Team, Fixture, MarketOdds, Result, TournamentState, Prediction, BracketFixture, ClosedMatch,
 )
 from .serializers import (
     TeamSerializer, FixtureSerializer, MarketSerializer, PredictionSerializer,
@@ -63,6 +63,10 @@ def bootstrap(request):
             "status": getattr(r, "status", "finished"), "minute": getattr(r, "minute", ""),
         }
 
+    closed = {}
+    for cm in ClosedMatch.objects.all():
+        closed.setdefault(str(cm.round), {})[str(cm.index)] = True
+
     # partidos registrados por el admin (override del modelo)
     overrides = {}
     for bf in BracketFixture.objects.all():
@@ -86,6 +90,7 @@ def bootstrap(request):
         },
         "results": results,
         "overrides": overrides,
+        "closed_matches": closed,
         "ai_picks": _int_keyed(ai_picks),
         "prob_f": _int_keyed(prob_f),
         "reach": reach,
@@ -154,9 +159,12 @@ def save_prediction(request):
         return Response({"detail": "Las apuestas de esta etapa están cerradas."},
                         status=status.HTTP_400_BAD_REQUEST)
     i = int(request.data.get("index"))
-    # partido ya jugado (resultado cargado) => pronóstico bloqueado
+    # partido ya jugado o cerrado por el admin => pronóstico bloqueado
     if Result.objects.filter(round=r, index=i).exists():
         return Response({"detail": "Ese partido ya se jugó; el pronóstico está bloqueado."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if ClosedMatch.objects.filter(round=r, index=i).exists():
+        return Response({"detail": "Ese partido está cerrado para pronósticos."},
                         status=status.HTTP_400_BAD_REQUEST)
     pred, _ = Prediction.objects.update_or_create(
         user=request.user, round=r, index=i,
@@ -346,3 +354,48 @@ def admin_resolve(request):
         state.round_open += 1
         state.save(update_fields=["round_open"])
     return Response({"round_open": state.round_open})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_match_lock(request):
+    """Abre/cierra un partido concreto para pronósticos."""
+    if not _is_admin(request):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    r = int(request.data.get("round")); i = int(request.data.get("index"))
+    if request.data.get("closed"):
+        ClosedMatch.objects.get_or_create(round=r, index=i)
+    else:
+        ClosedMatch.objects.filter(round=r, index=i).delete()
+    return Response({"ok": True})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_predictions(request):
+    """Lista TODOS los pronósticos: usuario, cuándo, partido, pronóstico."""
+    if not _is_admin(request):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    eng = build_engine()
+    rounds = eng.resolve("fav")["rounds"]
+    out = []
+    for p in Prediction.objects.select_related("user").order_by("-updated_at"):
+        m = rounds[p.round][p.index] if p.round < len(rounds) and p.index < len(rounds[p.round]) else {}
+        out.append({
+            "id": p.id, "user": p.user.name or p.user.email, "email": p.user.email,
+            "round": p.round, "round_label": ROUND_LABELS[p.round], "index": p.index,
+            "team_a": m.get("a"), "team_b": m.get("b"), "pick": p.pick,
+            "score": (f"{p.goal_a}-{p.goal_b}" if p.goal_a is not None and p.goal_b is not None else ""),
+            "created_at": p.created_at, "updated_at": p.updated_at,
+        })
+    return Response(out)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def admin_prediction_delete(request, pid):
+    """Elimina un pronóstico para que el usuario lo vuelva a hacer."""
+    if not _is_admin(request):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    Prediction.objects.filter(pk=pid).delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
