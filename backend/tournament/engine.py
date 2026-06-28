@@ -1,51 +1,54 @@
 """
-Motor del torneo — port fiel del simulador (Elo + Monte Carlo + puntaje).
-Sin datos quemados: todo sale de la base de datos (Team, Fixture, Result).
-
-Equivalencias con el JS original:
-  elo(t)        -> Team.elo (+55 si anfitrión)
-  pWin(a,b)     -> logística Elo /400
-  resolve(mode) -> arma el cuadro desde R32 aplicando locks (Result)
-  simulate(N)   -> Monte Carlo: probabilidad de llegar a cada ronda
-  freeze(r)     -> picks de la IA + probabilidades congeladas por ronda
-  scoring       -> BASE=[1,2,3,5,8], sorpresa hasta x3
+Motor del torneo — Elo + Monte Carlo + puntaje.
+Híbrido: el modelo proyecta todo el cuadro; el admin registra partidos reales
+por etapa (BracketFixture) que sustituyen el emparejamiento proyectado, y
+carga resultados (Result) que determinan ganadores y puntos.
 """
 import math
 import random
 
 BASE = [1, 2, 3, 5, 8]
+EXACT_BONUS = [1, 2, 3, 4, 5]
 ROUND_LABELS = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinal", "Final"]
 
 
 class Engine:
-    def __init__(self, teams, fixtures, results):
-        # teams: {name: {"elo": int, "host": bool}}
-        # fixtures: lista ordenada por match_no -> {"a","b","id"}
-        # results: {round: {index: winner}}
+    def __init__(self, teams, fixtures, results, overrides=None):
         self.teams = teams
         self.round0 = [{"a": f["a"], "b": f["b"], "id": f["id"]} for f in fixtures]
-        self.locks = results or {}
+        self.results = results or {}
+        self.overrides = overrides or {}
 
-    # ---- Elo ----
     def elo(self, t):
         info = self.teams.get(t)
-        if not info:
-            return 1700
-        return info["elo"] + (55 if info.get("host") else 0)
+        return (info["elo"] + (55 if info.get("host") else 0)) if info else 1700
 
     def p_win(self, a, b):
         return 1.0 / (1.0 + math.pow(10, -(self.elo(a) - self.elo(b)) / 400.0))
 
-    # ---- resolución del cuadro ----
+    def _lock(self, r, i):
+        return (self.results.get(r, {}).get(i) or {}).get("winner")
+
+    def _apply_override(self, r, cur):
+        ov = self.overrides.get(r, {})
+        for i, m in enumerate(cur):
+            o = ov.get(i)
+            if o:
+                if o.get("a"):
+                    m["a"] = o["a"]
+                if o.get("b"):
+                    m["b"] = o["b"]
+
     def resolve(self, mode="fav"):
-        rounds = [list(self.round0)]
+        rounds = [[dict(m) for m in self.round0]]
         cur = rounds[0]
         res = []
         for r in range(5):
+            self._apply_override(r, cur)
             winners = []
             for i, m in enumerate(cur):
                 x = None
-                lk = self.locks.get(r, {}).get(i)
+                lk = self._lock(r, i)
                 if lk:
                     x = lk
                 elif m.get("a") and m.get("b"):
@@ -63,7 +66,6 @@ class Engine:
             res.append(winners)
         return {"rounds": rounds, "res": res}
 
-    # ---- Monte Carlo: prob. de alcanzar cada ronda ----
     def simulate(self, n=4000):
         reach = {t: [0, 0, 0, 0, 0] for t in self.teams}
         for _ in range(n):
@@ -74,14 +76,11 @@ class Engine:
                         reach[w][r] += 1
         return {t: [x / n for x in reach[t]] for t in reach}
 
-    # ---- IA: picks + probabilidades congeladas por ronda ----
     def freeze(self, mode="fav"):
         rounds = self.resolve(mode)["rounds"]
-        ai_picks = {}
-        prob_f = {}
+        ai_picks, prob_f = {}, {}
         for r, ms in enumerate(rounds):
-            ai_picks[r] = {}
-            prob_f[r] = {}
+            ai_picks[r], prob_f[r] = {}, {}
             for i, m in enumerate(ms):
                 a, b = m.get("a"), m.get("b")
                 if a and b:
@@ -90,39 +89,45 @@ class Engine:
                     prob_f[r][i] = {a: pa, b: 1 - pa}
         return ai_picks, prob_f
 
-    # ---- puntaje ----
     @staticmethod
     def surprise(p):
         return min(3.0, 0.5 / p) if (p and p < 0.5) else 1.0
 
-    def score_user(self, user_picks):
-        """user_picks: {round: {index: pick}}  ->  puntos del usuario."""
+    def score_user(self, user_preds):
         _, prob_f = self.freeze("fav")
         pts = 0.0
         for r in range(5):
-            locks = self.locks.get(r, {})
-            ups = user_picks.get(r, {})
-            for i, real in locks.items():
+            res_r = self.results.get(r, {})
+            ups = user_preds.get(r, {})
+            for i, real in res_r.items():
                 up = ups.get(i)
-                if up and up == real:
-                    p = (prob_f.get(r, {}).get(i, {}) or {}).get(up, 0.5)
+                if not up:
+                    continue
+                if up.get("pick") and up["pick"] == real.get("winner"):
+                    p = (prob_f.get(r, {}).get(i, {}) or {}).get(up["pick"], 0.5)
                     pts += BASE[r] * self.surprise(p)
+                rs = real.get("score") or ""
+                if rs and "-" in rs and up.get("goal_a") is not None and up.get("goal_b") is not None:
+                    try:
+                        ra, rb = [int(x) for x in rs.split("-")[:2]]
+                        if int(up["goal_a"]) == ra and int(up["goal_b"]) == rb:
+                            pts += EXACT_BONUS[r]
+                    except (ValueError, TypeError):
+                        pass
         return round(pts)
 
     def score_ai(self):
         ai_picks, _ = self.freeze("fav")
         pts = 0
         for r in range(5):
-            locks = self.locks.get(r, {})
-            for i, real in locks.items():
-                if ai_picks.get(r, {}).get(i) == real:
+            for i, real in self.results.get(r, {}).items():
+                if ai_picks.get(r, {}).get(i) == real.get("winner"):
                     pts += BASE[r]
         return pts
 
 
 def build_engine():
-    """Carga datos de la BD y devuelve un Engine + estructuras auxiliares."""
-    from .models import Team, Fixture, Result
+    from .models import Team, Fixture, Result, BracketFixture
 
     teams = {t.name: {"elo": t.elo, "host": t.host} for t in Team.objects.all()}
     fixtures = [
@@ -131,5 +136,8 @@ def build_engine():
     ]
     results = {}
     for res in Result.objects.all():
-        results.setdefault(res.round, {})[res.index] = res.winner
-    return Engine(teams, fixtures, results)
+        results.setdefault(res.round, {})[res.index] = {"winner": res.winner, "score": res.score}
+    overrides = {}
+    for bf in BracketFixture.objects.all():
+        overrides.setdefault(bf.round, {})[bf.index] = {"a": bf.team_a, "b": bf.team_b, "date": bf.date_label}
+    return Engine(teams, fixtures, results, overrides)

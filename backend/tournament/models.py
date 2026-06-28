@@ -15,8 +15,6 @@ class Team(models.Model):
     code = models.CharField(max_length=8, help_text="ISO flag code, ej. 'ar', 'gb-eng'")
     elo = models.IntegerField(default=1700)
     host = models.BooleanField(default=False)
-    # Estadísticas/dossier (gf, gc, xg, xga, poss, sh, sot, kp, cs, pass,
-    # posg, rec, res[], inj[], proy)
     stats = models.JSONField(default=dict, blank=True)
 
     class Meta:
@@ -28,7 +26,7 @@ class Team(models.Model):
 
 class Fixture(models.Model):
     """Cruce de Dieciseisavos (R32). Punto de partida del cuadro."""
-    match_no = models.PositiveSmallIntegerField(unique=True)  # 1..16
+    match_no = models.PositiveSmallIntegerField(unique=True)
     team_a = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="fixtures_a")
     team_b = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="fixtures_b")
     date_label = models.CharField(max_length=60, blank=True)
@@ -41,7 +39,6 @@ class Fixture(models.Model):
 
 
 class MarketOdds(models.Model):
-    """Probabilidades de mercado por cruce de R32 (mercado vs modelo)."""
     match_no = models.PositiveSmallIntegerField(unique=True)
     a = models.FloatField()
     d = models.FloatField()
@@ -55,10 +52,29 @@ class MarketOdds(models.Model):
 
 class Result(models.Model):
     """Resultado real cargado por el admin: bloquea (lock) un cruce."""
-    round = models.PositiveSmallIntegerField()      # 0..4
-    index = models.PositiveSmallIntegerField()      # posición en la ronda
-    winner = models.CharField(max_length=60)        # nombre de equipo
-    score = models.CharField(max_length=12, blank=True)  # "2-1"
+    round = models.PositiveSmallIntegerField()
+    index = models.PositiveSmallIntegerField()
+    winner = models.CharField(max_length=60)
+    score = models.CharField(max_length=12, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("round", "index")
+        ordering = ["round", "index"]
+
+
+class BracketFixture(models.Model):
+    """
+    Partido REAL registrado por el admin para una etapa (octavos, cuartos…).
+    Si existe para un (round, index), su emparejamiento sustituye al que
+    proyecta el modelo. R0 (16vos) viene de Fixture; aquí van 1..4.
+    """
+    round = models.PositiveSmallIntegerField()
+    index = models.PositiveSmallIntegerField()
+    team_a = models.CharField(max_length=60, blank=True)
+    team_b = models.CharField(max_length=60, blank=True)
+    date_label = models.CharField(max_length=60, blank=True)
+    confirmed = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -69,7 +85,7 @@ class Result(models.Model):
 class TournamentState(models.Model):
     """Estado global del torneo (singleton, pk=1)."""
     round_open = models.PositiveSmallIntegerField(default=0)
-    rounds_enabled = models.JSONField(default=dict)  # {"0":true,...}
+    rounds_enabled = models.JSONField(default=dict)
     total_players = models.PositiveIntegerField(default=2480)
     updated_at = models.DateTimeField(auto_now=True)
 

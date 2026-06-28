@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Team, Fixture, MarketOdds, Result, TournamentState, Prediction
+from .models import (
+    Team, Fixture, MarketOdds, Result, TournamentState, Prediction, BracketFixture,
+)
 
 
 @admin.register(Team)
@@ -23,6 +25,12 @@ class MarketAdmin(admin.ModelAdmin):
 class ResultAdmin(admin.ModelAdmin):
     list_display = ("round", "index", "winner", "score", "updated_at")
     list_filter = ("round",)
+
+
+@admin.register(BracketFixture)
+class BracketFixtureAdmin(admin.ModelAdmin):
+    list_display = ("round", "index", "team_a", "team_b", "date_label", "confirmed")
+    list_filter = ("round", "confirmed")
 
 
 @admin.register(TournamentState)

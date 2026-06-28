@@ -9,7 +9,7 @@ from emails.service import send_prediction_email
 from .engine import build_engine, BASE
 from .kimi import projection as kimi_projection, commentary as kimi_commentary
 from .models import (
-    Team, Fixture, MarketOdds, Result, TournamentState, Prediction,
+    Team, Fixture, MarketOdds, Result, TournamentState, Prediction, BracketFixture,
 )
 from .serializers import (
     TeamSerializer, FixtureSerializer, MarketSerializer, PredictionSerializer,
@@ -25,11 +25,14 @@ def _is_admin(request):
     return request.user.is_authenticated and request.user.is_admin
 
 
-def _user_picks_map(user):
-    picks = {}
+def _user_pred_map(user):
+    """{round: {index: {pick, goal_a, goal_b}}} para scoring (incluye goles)."""
+    preds = {}
     for p in Prediction.objects.filter(user=user):
-        picks.setdefault(p.round, {})[p.index] = p.pick
-    return picks
+        preds.setdefault(p.round, {})[p.index] = {
+            "pick": p.pick, "goal_a": p.goal_a, "goal_b": p.goal_b,
+        }
+    return preds
 
 
 def _int_keyed(d):
@@ -59,6 +62,14 @@ def bootstrap(request):
             "winner": r.winner, "score": r.score,
         }
 
+    # partidos registrados por el admin (override del modelo)
+    overrides = {}
+    for bf in BracketFixture.objects.all():
+        overrides.setdefault(str(bf.round), {})[str(bf.index)] = {
+            "team_a": bf.team_a, "team_b": bf.team_b,
+            "date_label": bf.date_label, "confirmed": bf.confirmed,
+        }
+
     ai_picks, prob_f = eng.freeze("fav")
     reach = eng.simulate(int(request.query_params.get("n", 1500)))
     ai_points = eng.score_ai()
@@ -73,6 +84,7 @@ def bootstrap(request):
             "total_players": state.total_players,
         },
         "results": results,
+        "overrides": overrides,
         "ai_picks": _int_keyed(ai_picks),
         "prob_f": _int_keyed(prob_f),
         "reach": reach,
@@ -81,11 +93,10 @@ def bootstrap(request):
     }
 
     if request.user.is_authenticated and not request.user.is_admin:
-        my = _user_picks_map(request.user)
         data["my_predictions"] = PredictionSerializer(
             Prediction.objects.filter(user=request.user), many=True
         ).data
-        data["my_points"] = eng.score_user(my)
+        data["my_points"] = eng.score_user(_user_pred_map(request.user))
 
     return Response(data)
 
@@ -175,7 +186,7 @@ def my_predictions(request):
     return Response({
         "predictions": PredictionSerializer(
             Prediction.objects.filter(user=request.user), many=True).data,
-        "points": eng.score_user(_user_picks_map(request.user)),
+        "points": eng.score_user(_user_pred_map(request.user)),
     })
 
 
@@ -189,7 +200,7 @@ def ranking(request):
     rows = []
     for u in User.objects.filter(role=User.Role.USER):
         rows.append({"id": u.id, "name": u.name or u.email,
-                     "points": eng.score_user(_user_picks_map(u))})
+                     "points": eng.score_user(_user_pred_map(u))})
     rows.sort(key=lambda x: x["points"], reverse=True)
     for k, row in enumerate(rows):
         row["rank"] = k + 1
@@ -209,7 +220,7 @@ def admin_users(request):
     out = []
     for u in User.objects.filter(role=User.Role.USER):
         out.append({**UserSerializer(u).data,
-                    "points": eng.score_user(_user_picks_map(u))})
+                    "points": eng.score_user(_user_pred_map(u))})
     return Response(out)
 
 
@@ -245,7 +256,7 @@ def admin_user_predictions(request, uid):
     return Response({
         "user": UserSerializer(u).data,
         "predictions": PredictionSerializer(Prediction.objects.filter(user=u), many=True).data,
-        "points": eng.score_user(_user_picks_map(u)),
+        "points": eng.score_user(_user_pred_map(u)),
     })
 
 
@@ -279,6 +290,29 @@ def admin_round(request):
     state.rounds_enabled[r] = bool(request.data.get("enabled"))
     state.save(update_fields=["rounds_enabled"])
     return Response({"rounds_enabled": state.rounds_enabled})
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def admin_fixture(request):
+    """Registra / borra el partido real de una etapa (octavos, cuartos…)."""
+    if not _is_admin(request):
+        return Response(status=status.HTTP_403_FORBIDDEN)
+    r = int(request.data.get("round"))
+    i = int(request.data.get("index"))
+    if request.method == "DELETE":
+        BracketFixture.objects.filter(round=r, index=i).delete()
+        return Response({"ok": True})
+    BracketFixture.objects.update_or_create(
+        round=r, index=i,
+        defaults={
+            "team_a": request.data.get("team_a", ""),
+            "team_b": request.data.get("team_b", ""),
+            "date_label": request.data.get("date_label", ""),
+            "confirmed": bool(request.data.get("confirmed", True)),
+        },
+    )
+    return Response({"ok": True})
 
 
 @api_view(["POST"])

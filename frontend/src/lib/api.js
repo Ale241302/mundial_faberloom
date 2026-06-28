@@ -32,7 +32,6 @@ export const api = {
   del: (p, b) => req("DELETE", p, b),
 };
 
-// ---- endpoints ----
 export const API = {
   bootstrap: (n = 1500) => api.get(`/bootstrap/?n=${n}`),
   team: (name, lang, ai) =>
@@ -40,7 +39,6 @@ export const API = {
   ranking: () => api.get(`/ranking/`),
   savePrediction: (p) => api.post(`/predictions/save/`, p),
   myPredictions: () => api.get(`/predictions/`),
-  // auth
   register: (b) => api.post(`/auth/register/`, b),
   login: (b) => api.post(`/auth/login/`, b),
   logout: () => api.post(`/auth/logout/`),
@@ -48,7 +46,6 @@ export const API = {
   resetRequest: (email) => api.post(`/auth/password/reset/`, { email }),
   resetValidate: (token) => api.get(`/auth/password/reset/validate/?token=${encodeURIComponent(token)}`),
   resetConfirm: (b) => api.post(`/auth/password/reset/confirm/`, b),
-  // admin
   adminUsers: () => api.get(`/admin/users/`),
   adminUserPatch: (id, b) => api.patch(`/admin/users/${id}/`, b),
   adminUserDelete: (id) => api.del(`/admin/users/${id}/`),
@@ -56,4 +53,6 @@ export const API = {
   adminResult: (b) => api.post(`/admin/result/`, b),
   adminResultDelete: (b) => api.del(`/admin/result/`, b),
   adminRound: (b) => api.post(`/admin/round/`, b),
+  adminFixture: (b) => api.post(`/admin/fixture/`, b),
+  adminFixtureDelete: (b) => api.del(`/admin/fixture/`, b),
 };

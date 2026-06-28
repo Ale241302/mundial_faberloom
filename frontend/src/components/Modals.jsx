@@ -36,7 +36,7 @@ function PwInput({ id, value, onChange, ph }) {
 
 /* ---------------- Login (SIN pista de admin) ---------------- */
 function LoginModal({ onClose }) {
-  const { lang, afterAuth, setModal, toast } = useApp();
+  const { afterAuth, setModal, toast } = useApp();
   const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -93,7 +93,7 @@ function RegisterModal({ onClose }) {
   );
 }
 
-/* ---------------- Recuperar (pide correo → enlace) ---------------- */
+/* ---------------- Recuperar ---------------- */
 function RecoverModal({ onClose }) {
   const { setModal } = useApp();
   const [email, setEmail] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
@@ -105,45 +105,34 @@ function RecoverModal({ onClose }) {
   return (
     <Modal onClose={onClose}>
       <div className="flhd"><b>Recuperar contraseña</b><span className="x" onClick={onClose}>✕</span></div>
-      <div className="note" style={{ marginBottom: 10 }}>
-        Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.
-      </div>
+      <div className="note" style={{ marginBottom: 10 }}>Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.</div>
       <label className="fl-l">Correo</label>
       <input className="fl-in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       {msg && <div className="fl-ok">{msg}</div>}
-      <button className="coral" style={{ width: "100%", marginTop: 10 }} disabled={busy} onClick={submit}>
-        Enviarme el enlace
-      </button>
+      <button className="coral" style={{ width: "100%", marginTop: 10 }} disabled={busy} onClick={submit}>Enviarme el enlace</button>
       <div className="fl-alt"><a onClick={() => setModal({ type: "login" })}>Volver a iniciar sesión</a></div>
     </Modal>
   );
 }
 
-/* ---------------- Reset (desde el enlace del correo) ---------------- */
+/* ---------------- Reset ---------------- */
 function ResetModal({ token, onClose }) {
   const { lang, afterAuth, toast } = useApp();
   const lx = LX(lang);
   const [valid, setValid] = useState(null); const [email, setEmail] = useState("");
   const [p1, setP1] = useState(""); const [p2, setP2] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-
   useEffect(() => {
-    API.resetValidate(token)
-      .then((r) => { setValid(true); setEmail(r.email || ""); })
-      .catch(() => setValid(false));
+    API.resetValidate(token).then((r) => { setValid(true); setEmail(r.email || ""); }).catch(() => setValid(false));
   }, [token]);
-
   const submit = async () => {
     setErr("");
     if (p1.length < 6) return setErr("La contraseña debe tener al menos 6 caracteres");
     if (p1 !== p2) return setErr("Las contraseñas no coinciden");
     setBusy(true);
-    try {
-      const p = await API.resetConfirm({ token, password: p1, password2: p2 });
-      await afterAuth(p); toast("Contraseña actualizada. ¡Listo!");
-    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+    try { const p = await API.resetConfirm({ token, password: p1, password2: p2 }); await afterAuth(p); toast("Contraseña actualizada. ¡Listo!"); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
-
   return (
     <Modal onClose={onClose}>
       <div className="flhd"><b>{lx.resetTitle}</b><span className="x" onClick={onClose}>✕</span></div>
@@ -157,9 +146,7 @@ function ResetModal({ token, onClose }) {
           <label className="fl-l">{lx.repeatpass}</label>
           <PwInput value={p2} onChange={(e) => setP2(e.target.value)} />
           <div className="fl-err">{err}</div>
-          <button className="coral" style={{ width: "100%", marginTop: 10 }} disabled={busy} onClick={submit}>
-            {lx.setpass}
-          </button>
+          <button className="coral" style={{ width: "100%", marginTop: 10 }} disabled={busy} onClick={submit}>{lx.setpass}</button>
         </>
       )}
     </Modal>
@@ -168,16 +155,14 @@ function ResetModal({ token, onClose }) {
 
 /* ---------------- Perfil + ranking ---------------- */
 function ProfileModal({ onClose }) {
-  const { lang, user, engine, predictions } = useApp();
+  const { lang, engine, predictions } = useApp();
   const l = L(lang);
   const [rank, setRank] = useState(null);
   const [showPreds, setShowPreds] = useState(false);
   useEffect(() => { API.ranking().then(setRank).catch(() => {}); }, []);
   const myRow = rank?.ranking.find((r) => r.me);
   const myPts = myRow?.points ?? engine.scoreUser(predictions);
-
   if (showPreds) return <PredList onBack={() => setShowPreds(false)} onClose={onClose} />;
-
   return (
     <Modal onClose={onClose} wide>
       <div className="flhd"><b>Mi perfil</b><span className="x" onClick={onClose}>✕</span></div>
@@ -185,9 +170,7 @@ function ProfileModal({ onClose }) {
         <div className="statbox"><div className="sl">Tu puesto</div><div className="sv">#{myRow ? myRow.rank : "-"}</div></div>
         <div className="statbox"><div className="sl">Tus puntos</div><div className="sv">{myPts}</div></div>
       </div>
-      <button className="coral sm" style={{ marginBottom: 14 }} onClick={() => setShowPreds(true)}>
-        Ver / editar mis pronósticos
-      </button>
+      <button className="coral sm" style={{ marginBottom: 14 }} onClick={() => setShowPreds(true)}>Ver / editar mis pronósticos</button>
       <div className="plstage">Ranking</div>
       {!rank?.ranking.length && <div className="note">Aún no hay jugadores.</div>}
       {rank?.ranking.map((x) => (
@@ -199,7 +182,7 @@ function ProfileModal({ onClose }) {
   );
 }
 
-/* lista de pronósticos por etapa (editable) */
+/* lista de pronósticos por etapa — con MARCADOR (goles) */
 function PredList({ onBack, onClose }) {
   const { lang, engine, boot, predictions, mc } = useApp();
   const l = L(lang);
@@ -213,17 +196,20 @@ function PredList({ onBack, onClose }) {
         const ms = R[r] || [];
         return (
           <div key={r}>
-            <div className="plstage">{ROUND_LABELS[lang][r]}{enabled ? "" : " · cerrada"}</div>
+            <div className="plstage">{ROUND_LABELS[lang][r]}{enabled ? "" : " · cerrada"}{engine.confirmed(r, 0) || r === 0 ? "" : " · proyección"}</div>
             {ms.map((m, i) => {
               if (!m.a || !m.b) return <div className="plrow" key={i}><span className="plteams" style={{ opacity: .5 }}>{l.tbd}</span></div>;
-              const up = predictions[r]?.[i]?.pick;
+              const g = predictions[r]?.[i] || {};
+              const up = g.pick;
               return (
                 <div className="plrow" key={i}>
                   <span className="plteams"><Flag team={m.a} /> {m.a} <span style={{ color: "var(--taupe)" }}>vs</span> <Flag team={m.b} /> {m.b}</span>
                   {enabled ? (
-                    <span className="plpick">
-                      <button className={up === m.a ? "on" : ""} onClick={() => mc.pick(r, i, m.a, m)}>{m.a}</button>
-                      <button className={up === m.b ? "on" : ""} onClick={() => mc.pick(r, i, m.b, m)}>{m.b}</button>
+                    <span className="plpick" style={{ alignItems: "center" }}>
+                      <input className="plg" type="number" min="0" value={g.goal_a != null ? g.goal_a : ""} onChange={(e) => mc.goal(r, i, "a", e.target.value, m)} aria-label={"goles " + m.a} />
+                      <span className="dash">–</span>
+                      <input className="plg" type="number" min="0" value={g.goal_b != null ? g.goal_b : ""} onChange={(e) => mc.goal(r, i, "b", e.target.value, m)} aria-label={"goles " + m.b} />
+                      {up && <span className="plwin">✓ {up}</span>}
                     </span>
                   ) : <span className="cerrado">{up ? "✓ " + up : "-"}</span>}
                 </div>
@@ -242,18 +228,16 @@ function AdminModal({ onClose }) {
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState([]);
   useEffect(() => { if (tab === "users") API.adminUsers().then(setUsers).catch(() => {}); }, [tab]);
-
   const toggleActive = async (u) => { await API.adminUserPatch(u.id, { is_active: !u.is_active }); setUsers(await API.adminUsers()); };
   const del = async (u) => { if (!confirm(`Eliminar a ${u.name}?`)) return; await API.adminUserDelete(u.id); setUsers(await API.adminUsers()); toast("Usuario eliminado"); };
   const resetPw = async (u) => { const np = prompt(`Nueva contraseña para ${u.name}:`, "Mundial2026"); if (!np) return; await API.adminUserPatch(u.id, { password: np }); toast("Contraseña actualizada"); };
-  const toggleRound = async (r) => { const en = !boot.state.rounds_enabled[String(r)]; await API.adminRound({ round: r, enabled: en }); await loadBoot(); };
 
   return (
     <Modal onClose={onClose} wide>
       <div className="flhd"><b>Panel de administración</b><span className="x" onClick={onClose}>✕</span></div>
       <div className="fltabs">
         <button className={tab === "users" ? "on" : ""} onClick={() => setTab("users")}>Usuarios</button>
-        <button className={tab === "matches" ? "on" : ""} onClick={() => setTab("matches")}>Etapas</button>
+        <button className={tab === "matches" ? "on" : ""} onClick={() => setTab("matches")}>Partidos</button>
         <button className={tab === "results" ? "on" : ""} onClick={() => setTab("results")}>Resultados</button>
       </div>
 
@@ -275,25 +259,12 @@ function AdminModal({ onClose }) {
         </table>
       )}
 
-      {tab === "matches" && (
-        <>
-          <div className="note" style={{ marginBottom: 10 }}>Abre o cierra las apuestas por etapa.</div>
-          {[0, 1, 2, 3, 4].map((r) => {
-            const en = boot.state.rounds_enabled[String(r)];
-            return (
-              <div className="plrow" key={r}>
-                <span className="plteams">{ROUND_LABELS["es"][r]}</span>
-                <label className="sw"><input type="checkbox" checked={!!en} onChange={() => toggleRound(r)} /><span className="tk" /><span>{en ? "Abierta" : "Cerrada"}</span></label>
-              </div>
-            );
-          })}
-        </>
-      )}
+      {tab === "matches" && <PartidosTab />}
 
       {tab === "results" && (
         <>
           <div className="note" style={{ marginBottom: 12 }}>
-            En el cuadro, modo <b>Resultados</b>, marca el ganador real de cada cruce (avanza y se recalculan los puntos).
+            En el cuadro, modo <b>Resultados</b>, marca el ganador real y el marcador de cada cruce (avanza y se recalculan los puntos).
           </div>
           <button className="coral" onClick={() => { setMode("result"); onClose(); toast("Modo resultados: marca ganadores en el cuadro"); }}>
             Ir a cargar resultados en el cuadro
@@ -301,5 +272,76 @@ function AdminModal({ onClose }) {
         </>
       )}
     </Modal>
+  );
+}
+
+/* pestaña Partidos: abrir/cerrar etapas + registrar partidos por etapa */
+function PartidosTab() {
+  const { boot, engine, loadBoot } = useApp();
+  const teams = Object.keys(boot.teams).sort();
+  const labels = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinal", "Final"];
+  const counts = [16, 8, 4, 2, 1];
+  const [round, setRound] = useState(1);
+  const R = engine.resolve("fav").rounds;
+
+  const toggleRound = async (r) => {
+    const en = !boot.state.rounds_enabled[String(r)];
+    await API.adminRound({ round: r, enabled: en }); await loadBoot();
+  };
+
+  return (
+    <>
+      <div className="note" style={{ marginBottom: 8 }}>Abrir / cerrar apuestas por etapa:</div>
+      {[0, 1, 2, 3, 4].map((r) => {
+        const en = boot.state.rounds_enabled[String(r)];
+        return (
+          <div className="plrow" key={r}>
+            <span className="plteams">{labels[r]}</span>
+            <label className="sw"><input type="checkbox" checked={!!en} onChange={() => toggleRound(r)} /><span className="tk" /><span>{en ? "Abierta" : "Cerrada"}</span></label>
+          </div>
+        );
+      })}
+
+      <div className="plstage" style={{ marginTop: 16 }}>Registrar partidos</div>
+      <div className="note" style={{ marginBottom: 8 }}>16vos ya están. Octavos en adelante se muestran como proyección del modelo hasta que confirmes los equipos reales aquí.</div>
+      <div className="fltabs" style={{ marginBottom: 10 }}>
+        {[1, 2, 3, 4].map((r) => (
+          <button key={r} className={round === r ? "on" : ""} onClick={() => setRound(r)}>{labels[r]}</button>
+        ))}
+      </div>
+      {Array.from({ length: counts[round] }).map((_, i) => (
+        <FixtureRow key={round + "-" + i} round={round} index={i} teams={teams} model={(R[round] || [])[i] || {}} />
+      ))}
+    </>
+  );
+}
+
+function FixtureRow({ round, index, teams, model }) {
+  const { boot, loadBoot, toast } = useApp();
+  const ov = boot.overrides?.[String(round)]?.[String(index)];
+  const [a, setA] = useState(ov?.team_a || model.a || "");
+  const [b, setB] = useState(ov?.team_b || model.b || "");
+  const [date, setDate] = useState(ov?.date_label || "");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { await API.adminFixture({ round, index, team_a: a, team_b: b, date_label: date }); await loadBoot(); toast("Partido guardado"); }
+    finally { setBusy(false); }
+  };
+  const clear = async () => { await API.adminFixtureDelete({ round, index }); await loadBoot(); toast("Partido quitado"); };
+  return (
+    <div className="plrow" style={{ gap: 6, flexWrap: "wrap" }}>
+      <span style={{ fontFamily: "var(--mono)", color: "var(--taupe)", width: 18 }}>{index + 1}</span>
+      <select className="fl-in" style={{ flex: 1, minWidth: 110 }} value={a} onChange={(e) => setA(e.target.value)}>
+        <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <span style={{ color: "var(--taupe)" }}>vs</span>
+      <select className="fl-in" style={{ flex: 1, minWidth: 110 }} value={b} onChange={(e) => setB(e.target.value)}>
+        <option value="">—</option>{teams.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <input className="fl-in" style={{ width: 120 }} placeholder="fecha · sede" value={date} onChange={(e) => setDate(e.target.value)} />
+      <button className="coral sm" disabled={busy} onClick={save}>Guardar</button>
+      {ov && <button className="ghost sm" onClick={clear}>Quitar</button>}
+    </div>
   );
 }

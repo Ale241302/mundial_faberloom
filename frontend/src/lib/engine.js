@@ -1,11 +1,14 @@
 // Motor cliente — resuelve el cuadro desde los datos de la API (mismo
-// algoritmo que el backend). No hay datos quemados: todo viene de bootstrap.
+// algoritmo que el backend). Aplica overrides (partidos registrados por el
+// admin) y locks (resultados reales). Sin datos quemados.
 export const BASE_PTS = [1, 2, 3, 5, 8];
+export const EXACT_BONUS = [1, 2, 3, 4, 5];
 
 export function makeEngine(boot) {
-  const teams = boot.teams;       // {name: {elo, host, ...}}
-  const fixtures = boot.fixtures; // [{match_no, team_a, team_b, date_label}]
-  const results = boot.results || {}; // {round: {index: {winner, score}}}
+  const teams = boot.teams;
+  const fixtures = boot.fixtures;
+  const results = boot.results || {};
+  const overrides = boot.overrides || {};
 
   const round0 = [...fixtures]
     .sort((a, b) => a.match_no - b.match_no)
@@ -16,14 +19,28 @@ export function makeEngine(boot) {
     return x ? x.elo + (x.host ? 55 : 0) : 1700;
   };
   const pWin = (a, b) => 1 / (1 + Math.pow(10, -(elo(a) - elo(b)) / 400));
+  const ov = (r, i) => overrides[r]?.[i] || overrides[String(r)]?.[String(i)];
   const lock = (r, i) => results[r]?.[i]?.winner || results[String(r)]?.[String(i)]?.winner;
   const score = (r, i) => results[r]?.[i]?.score || results[String(r)]?.[String(i)]?.score || "";
+  const dateOf = (r, i) => ov(r, i)?.date_label || "";
+  const confirmed = (r, i) => !!ov(r, i)?.confirmed || !!lock(r, i);
+
+  function applyOverride(r, cur) {
+    cur.forEach((m, i) => {
+      const o = ov(r, i);
+      if (o) {
+        if (o.team_a) m.a = o.team_a;
+        if (o.team_b) m.b = o.team_b;
+      }
+    });
+  }
 
   function resolve(mode = "fav") {
     let rounds = [round0.map((m) => ({ ...m }))];
     let cur = rounds[0];
     const res = [];
     for (let r = 0; r < 5; r++) {
+      applyOverride(r, cur);
       const winners = [];
       cur.forEach((m, i) => {
         let x = null;
@@ -57,14 +74,20 @@ export function makeEngine(boot) {
       Object.keys(locks).forEach((i) => {
         const real = locks[i].winner;
         const up = ups[i];
-        if (up && up === real) {
-          const p = (probF[r]?.[i] || probF[String(r)]?.[String(i)] || {})[up] || 0.5;
+        if (!up) return;
+        if (up.pick && up.pick === real) {
+          const p = (probF[r]?.[i] || probF[String(r)]?.[String(i)] || {})[up.pick] || 0.5;
           pts += BASE_PTS[r] * surprise(p);
+        }
+        const rs = locks[i].score || "";
+        if (rs && rs.includes("-") && up.goal_a != null && up.goal_b != null) {
+          const [ra, rb] = rs.split("-").map((x) => parseInt(x, 10));
+          if (Number(up.goal_a) === ra && Number(up.goal_b) === rb) pts += EXACT_BONUS[r];
         }
       });
     }
     return Math.round(pts);
   }
 
-  return { teams, round0, elo, pWin, lock, score, resolve, scoreUser, surprise };
+  return { teams, round0, elo, pWin, lock, score, dateOf, confirmed, resolve, scoreUser, surprise };
 }
