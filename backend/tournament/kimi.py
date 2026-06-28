@@ -1,13 +1,14 @@
 """
 IA del sistema = Kimi (Moonshot). API compatible con OpenAI.
 
-Se usa para:
-  - projection(a, b): proyección textual de un cruce (estilo dossier).
-  - commentary(me, ai): narrativa del "rival IA" vs el usuario.
-
-Si no hay KIMI_API_KEY o la llamada falla, se cae a un texto local
-derivado del motor Elo (nunca rompe la app).
+predict(a, b, ...) -> dict con el pronóstico del cruce:
+  { winner, score, prob, analysis, source }
+Kimi ESTIMA (xG, marcador) a partir de lo que la FIFA sí entrega (marcador real,
+posesión) + la forma acumulada de cada selección. Todo se etiqueta como
+"estimación del modelo". Si no hay API key o falla, cae a un modelo Elo local.
 """
+import json
+import re
 import requests
 from django.conf import settings
 
@@ -16,73 +17,82 @@ def _enabled():
     return bool(settings.KIMI_ENABLED and settings.KIMI_API_KEY)
 
 
-def _chat(messages, max_tokens=320, temperature=0.6):
+def _chat(messages, max_tokens=400, temperature=0.5):
     url = f"{settings.KIMI_BASE_URL.rstrip('/')}/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.KIMI_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": settings.KIMI_MODEL,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
-    r = requests.post(url, json=payload, headers=headers, timeout=30)
+    headers = {"Authorization": f"Bearer {settings.KIMI_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": settings.KIMI_MODEL, "messages": messages,
+               "max_tokens": max_tokens, "temperature": temperature}
+    r = requests.post(url, json=payload, headers=headers, timeout=35)
     r.raise_for_status()
-    data = r.json()
-    return data["choices"][0]["message"]["content"].strip()
+    return r.json()["choices"][0]["message"]["content"].strip()
 
 
 SYSTEM = (
-    "Eres el motor analítico de FaberLoom para el Mundial 2026. "
-    "Tono: considerado, cálido, auditable. Sin hype ni 'magia'. "
-    "Respondes en el idioma que se te indique, breve y concreto."
+    "Eres el motor analítico de FaberLoom para el Mundial 2026. Tono considerado, "
+    "cálido, auditable; sin hype. Estimas a partir de datos reales de FIFA (marcador, "
+    "posesión) y de la forma reciente de cada selección. Devuelves SIEMPRE JSON válido."
 )
 
 
-def projection(team_a, team_b, prob_a, stats_a=None, stats_b=None, lang="es"):
-    """Devuelve un texto de proyección del cruce. Usa Kimi si está disponible."""
+def _stat_brief(name, stats):
+    s = stats or {}
+    res = ", ".join(s.get("res", [])[:4]) if s.get("res") else "sin partidos recientes"
+    return (f"{name}: GF {s.get('gf','?')}, GC {s.get('gc','?')}, xG {s.get('xg','?')}, "
+            f"posesión {s.get('poss','?')}%, forma reciente [{res}]")
+
+
+def predict(team_a, team_b, p_elo_a, stats_a=None, stats_b=None, lang="es"):
+    """Pronóstico del cruce. Kimi si hay key; si no, Elo local."""
     if not _enabled():
-        return _local_projection(team_a, team_b, prob_a, lang)
+        return _local(team_a, team_b, p_elo_a)
     try:
-        pct = round(prob_a * 100)
         user = (
-            f"Idioma: {lang}. Proyecta el cruce {team_a} vs {team_b}. "
-            f"Probabilidad modelo (Elo) de que gane {team_a}: {pct}%. "
-            f"Stats {team_a}: {stats_a}. Stats {team_b}: {stats_b}. "
-            "Da 2-3 frases: marcador probable, una clave táctica y una nota de incertidumbre. "
-            "Marca explícitamente que es ESTIMACION-MODELO, no predicción."
+            f"Idioma de salida: {lang}.\n"
+            f"Cruce: {team_a} vs {team_b}.\n"
+            f"Probabilidad Elo de base (gana {team_a}): {round(p_elo_a*100)}%.\n"
+            f"{_stat_brief(team_a, stats_a)}\n{_stat_brief(team_b, stats_b)}\n\n"
+            "Ajusta tu estimación a la forma reciente. Devuelve SOLO este JSON:\n"
+            '{"winner":"<equipo ganador>","score":"<marcador ej 2-1>",'
+            '"prob":<probabilidad 0-100 de que gane winner>,'
+            '"analysis":"<2-3 frases, marca claramente ESTIMACION-MODELO>"}'
         )
-        return _chat([{"role": "system", "content": SYSTEM},
-                      {"role": "user", "content": user}])
+        raw = _chat([{"role": "system", "content": SYSTEM},
+                     {"role": "user", "content": user}])
+        m = re.search(r"\{.*\}", raw, re.S)
+        data = json.loads(m.group(0)) if m else {}
+        winner = data.get("winner") or (team_a if p_elo_a >= 0.5 else team_b)
+        return {
+            "winner": winner,
+            "score": str(data.get("score") or "").strip(),
+            "prob": int(data.get("prob") or round(max(p_elo_a, 1 - p_elo_a) * 100)),
+            "analysis": (data.get("analysis") or "").strip(),
+            "source": "kimi",
+        }
     except Exception:
-        return _local_projection(team_a, team_b, prob_a, lang)
+        return _local(team_a, team_b, p_elo_a)
+
+
+def _local(a, b, pa):
+    fav, dog = (a, b) if pa >= 0.5 else (b, a)
+    favpct = round(max(pa, 1 - pa) * 100)
+    txt = (f"{fav} es favorito ({favpct}% [ESTIMACION-MODELO Elo]) frente a {dog}. "
+           "Sin API de IA disponible; estimación por ranking Elo. No es predicción, es señal.")
+    return {"winner": fav, "score": "", "prob": favpct, "analysis": txt, "source": "elo"}
+
+
+# compatibilidad con el nombre anterior usado en views
+def projection(team_a, team_b, prob_a, stats_a=None, stats_b=None, lang="es"):
+    d = predict(team_a, team_b, prob_a, stats_a, stats_b, lang)
+    parts = []
+    if d.get("winner"):
+        parts.append(f"Ganador estimado: {d['winner']}")
+    if d.get("score"):
+        parts.append(f"marcador {d['score']}")
+    if d.get("prob"):
+        parts.append(f"{d['prob']}%")
+    head = " · ".join(parts)
+    return (head + ". " + d.get("analysis", "")).strip()
 
 
 def commentary(me, ai, lang="es"):
-    if not _enabled():
-        return None
-    try:
-        user = (
-            f"Idioma: {lang}. El jugador lleva {me} puntos y la IA {ai}. "
-            "En UNA frase corta, motívalo a seguir o a buscar una sorpresa. Sin emojis."
-        )
-        return _chat([{"role": "system", "content": SYSTEM},
-                      {"role": "user", "content": user}], max_tokens=60, temperature=0.7)
-    except Exception:
-        return None
-
-
-def _local_projection(a, b, prob_a, lang):
-    pct = round(prob_a * 100)
-    fav, dog = (a, b) if prob_a >= 0.5 else (b, a)
-    favpct = max(pct, 100 - pct)
-    if lang == "en":
-        return (f"{fav} is favored ({favpct}% model estimate) over {dog}. "
-                "Close margins suggest a 1–2 goal edge. ESTIMACION-MODELO, not a prediction.")
-    if lang == "fr":
-        return (f"{fav} est favori ({favpct}% estimation modèle) face à {dog}. "
-                "Écart serré : avantage probable d'1 à 2 buts. ESTIMACION-MODELO, pas une prédiction.")
-    return (f"{fav} es favorito ({favpct}% [ESTIMACION-MODELO]) frente a {dog}. "
-            "El margen sugiere ventaja de 1-2 goles. No es predicción, es señal del modelo.")
+    return None

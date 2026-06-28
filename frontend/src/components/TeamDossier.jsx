@@ -28,9 +28,13 @@ export default function TeamDossier({ name, onClose }) {
 
   const askAI = async () => {
     setLoadingAI(true);
-    try { const d = await API.team(name, lang, true); setProj(d.projection || st.proy); }
+    try { const d = await API.team(name, lang, true); setProj(d.projection || st.proy || null); }
     finally { setLoadingAI(false); }
   };
+
+  // proj puede ser objeto {winner,score,prob,analysis} o texto antiguo
+  const pj = proj && typeof proj === "object" ? proj : null;
+  const pjText = pj ? (pj.analysis || "") : (typeof proj === "string" ? proj : (st.proy || ""));
 
   const KV = ({ k, v }) => (
     <div><span>{k}</span><b>{v != null && v !== "" ? v : "[N/D]"}</b></div>
@@ -93,7 +97,19 @@ export default function TeamDossier({ name, onClose }) {
 
           <div className="sec">
             <h3>{l.proj} · Kimi</h3>
-            <div style={{ fontSize: 13 }}>{(proj || st.proy || "").replace(/\*\*/g, "") || "Pulsa para generar el análisis de la IA."}</div>
+            {pj && (
+              <div className="plrow" style={{ borderBottom: 0, marginBottom: 4 }}>
+                <span className="plteams">
+                  Ganador estimado: <b>{pj.winner}</b>
+                  {pj.score ? <span className="note" style={{ marginLeft: 6 }}>marcador {pj.score}</span> : null}
+                </span>
+                {pj.prob != null && (
+                  <span style={{ fontFamily: "var(--mono)", color: "var(--coral)" }}>{pj.prob}%</span>
+                )}
+              </div>
+            )}
+            <div style={{ fontSize: 13 }}>{(pjText || "").replace(/\*\*/g, "") || "Pulsa para generar el pronóstico de la IA."}</div>
+            <div className="note" style={{ marginTop: 6 }}>Estimación del modelo (Kimi), no es predicción. Se ajusta con cada partido jugado.</div>
             <button className="ghost sm" style={{ marginTop: 8 }} onClick={askAI} disabled={loadingAI}>
               {loadingAI ? "Kimi analizando…" : "↻ Analizar con Kimi"}
             </button>

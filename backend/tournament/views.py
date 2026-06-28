@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from accounts.serializers import UserSerializer
 from emails.service import send_prediction_email
 from .engine import build_engine, BASE, ROUND_LABELS
-from .kimi import projection as kimi_projection, commentary as kimi_commentary
+from .kimi import predict as kimi_predict, projection as kimi_projection, commentary as kimi_commentary
 from .models import (
     Team, Fixture, MarketOdds, Result, TournamentState, Prediction, BracketFixture, ClosedMatch,
 )
@@ -136,7 +136,7 @@ def team_detail(request, name):
     if request.query_params.get("ai") == "1" and st != "out" and nm:
         opp = nm["opponent"]
         opp_team = Team.objects.filter(name=opp).first()
-        data["projection"] = kimi_projection(
+        data["projection"] = kimi_predict(
             name, opp, eng.p_win(name, opp),
             team.stats, (opp_team.stats if opp_team else {}),
             lang=request.query_params.get("lang", "es"),

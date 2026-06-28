@@ -116,4 +116,53 @@ def sync_results():
                     n += 1
                     logs.append(f"R{r}[{i}] {'/'.join(fm['teams'])} -> {fm['status']} {fm['score']} {fm['winner']}")
                     break
+    recompute_form()
     return n, logs
+
+
+def recompute_form():
+    """Reconstruye la forma REAL de cada selección desde los Result finalizados.
+    Idempotente: recalcula desde cero. Guarda en Team.stats: res (resultados
+    verificados para mostrar y alimentar a Kimi) y ko_gf/ko_gc (goles acumulados
+    en eliminatorias). No inventa nada: solo marcadores reales de la FIFA.
+    """
+    from .engine import build_engine
+    from .models import Team, Result
+
+    eng = build_engine()
+    rounds = eng.resolve("fav")["rounds"]
+    form, gfa = {}, {}
+    for res in Result.objects.filter(status="finished").order_by("round", "index"):
+        if res.round >= len(rounds):
+            continue
+        slots = rounds[res.round]
+        if res.index >= len(slots):
+            continue
+        slot = slots[res.index]
+        a, b = slot.get("a"), slot.get("b")
+        if not a or not b:
+            continue
+        ga = gb = None
+        if res.score and "-" in res.score:
+            try:
+                ga, gb = [int(x) for x in res.score.split("-")[:2]]
+            except (ValueError, TypeError):
+                ga = gb = None
+        for team, opp, gf_, gc_ in ((a, b, ga, gb), (b, a, gb, ga)):
+            if gf_ is not None and gc_ is not None:
+                tag = "V" if gf_ > gc_ else ("D" if gf_ < gc_ else ("V" if res.winner == team else "D"))
+                form.setdefault(team, []).append(f"{tag} {gf_}-{gc_} vs {opp}")
+                g = gfa.setdefault(team, [0, 0]); g[0] += gf_; g[1] += gc_
+            else:
+                tag = "V" if res.winner == team else "D"
+                form.setdefault(team, []).append(f"{tag} vs {opp}")
+
+    for t in Team.objects.all():
+        if t.name not in form:
+            continue
+        stats = dict(t.stats or {})
+        stats["res"] = form[t.name][-5:]
+        if t.name in gfa:
+            stats["ko_gf"], stats["ko_gc"] = gfa[t.name]
+        t.stats = stats
+        t.save(update_fields=["stats"])
