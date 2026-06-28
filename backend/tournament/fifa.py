@@ -116,6 +116,7 @@ def sync_results():
                     n += 1
                     logs.append(f"R{r}[{i}] {'/'.join(fm['teams'])} -> {fm['status']} {fm['score']} {fm['winner']}")
                     break
+    apply_standings()
     recompute_form()
     return n, logs
 
@@ -166,3 +167,42 @@ def recompute_form():
             stats["ko_gf"], stats["ko_gc"] = gfa[t.name]
         t.stats = stats
         t.save(update_fields=["stats"])
+
+
+# Clasificación final de la fase de grupos (real FIFA). code -> (posición, grupo).
+# La fase de grupos está cerrada: estos valores son definitivos.
+STANDINGS = {
+    "MEX": (1, "A"), "RSA": (2, "A"),
+    "SUI": (1, "B"), "CAN": (2, "B"), "BIH": (3, "B"),
+    "BRA": (1, "C"), "MAR": (2, "C"),
+    "USA": (1, "D"), "AUS": (2, "D"), "PAR": (3, "D"),
+    "GER": (1, "E"), "CIV": (2, "E"), "ECU": (3, "E"),
+    "NED": (1, "F"), "JPN": (2, "F"), "SWE": (3, "F"),
+    "BEL": (1, "G"), "EGY": (2, "G"),
+    "ESP": (1, "H"), "CPV": (2, "H"),
+    "FRA": (1, "I"), "NOR": (2, "I"), "SEN": (3, "I"),
+    "ARG": (1, "J"), "AUT": (2, "J"), "ALG": (3, "J"),
+    "COL": (1, "K"), "POR": (2, "K"), "COD": (3, "K"),
+    "ENG": (1, "L"), "CRO": (2, "L"), "GHA": (3, "L"),
+}
+
+
+def apply_standings():
+    """Escribe posición+grupo (posg) de cada selección desde la clasificación
+    real de FIFA, para que el 'Grupo' aparezca en TODAS y no como '—'.
+    Idempotente."""
+    from .models import Team
+    n = 0
+    for code, (pos, grp) in STANDINGS.items():
+        name = FIFA_CODE.get(code)
+        if not name:
+            continue
+        t = Team.objects.filter(name=name).first()
+        if not t:
+            continue
+        stats = dict(t.stats or {})
+        stats["posg"] = f"{pos}° Grupo {grp}"
+        t.stats = stats
+        t.save(update_fields=["stats"])
+        n += 1
+    return n
