@@ -51,13 +51,13 @@ def _team_name(side):
 
 
 def _classify(item, played):
-    ms = item.get("MatchStatus")
-    if not played or ms == 0:
+    # FIFA: MatchStatus 0 = FINALIZADO; 1 = no empezado. En vivo => hay marcador
+    # pero todavía sin ganador definido.
+    if not played:
         return "scheduled"
-    if ms == 3:
+    if item.get("Winner") or item.get("MatchStatus") == 0:
         return "finished"
-    # en vivo si hay reloj de partido y no está marcado como jugado
-    return "live" if item.get("MatchTime") else "finished"
+    return "live"
 
 
 def sync_results():
