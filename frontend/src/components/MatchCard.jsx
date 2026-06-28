@@ -4,7 +4,7 @@ import { Flag } from "./ui.jsx";
 import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
-export default function MatchCard({ r, i, m, compact }) {
+export default function MatchCard({ r, i, m, compact, column }) {
   const { lang, engine, boot, mode, predictions, isAdmin, mc } = useApp();
   const l = L(lang);
   const lx = LX(lang);
@@ -29,9 +29,16 @@ export default function MatchCard({ r, i, m, compact }) {
       ? `${g.goal_a}–${g.goal_b}` : "";
   const tie = predScore && Number(g.goal_a) === Number(g.goal_b);
 
-  const dateLabel =
-    r === 0 ? (boot.fixtures.find((f) => String(f.match_no) === String(m.id))?.date_label || "") : "";
-  const roundLabel = r === 0 ? (dateLabel || ROUND_LABELS[lang][0]) : ROUND_LABELS[lang][r];
+  // fecha · sede (16vos del fixture; octavos+ del partido registrado por admin)
+  const dateLabel = r === 0
+    ? (boot.fixtures.find((f) => String(f.match_no) === String(m.id))?.date_label || "")
+    : (engine.dateOf(r, i) || "");
+
+  // En columnas (desktop) NO se repite la etiqueta de etapa: la columna ya la
+  // muestra. Solo 16vos enseña fecha. En móvil (stack) sí se muestra etiqueta.
+  const label = column
+    ? (r === 0 ? dateLabel : dateLabel)
+    : (r === 0 ? (dateLabel || ROUND_LABELS[lang][0]) : ROUND_LABELS[lang][r]);
 
   const CSide = ({ team }) => {
     if (!team) return <div className="cmps" style={{ opacity: 0.4 }}>·</div>;
@@ -39,6 +46,7 @@ export default function MatchCard({ r, i, m, compact }) {
     return (
       <div className={"cmps " + clsFor(team)} onClick={() => mc.pick(r, i, team, m)}>
         <Flag team={team} />
+        <span className="tnm" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team}</span>
         {ap === team && open && <span className="tagai">{l.ai}</span>}
         <span className="pc">{pc}</span>
       </div>
@@ -75,15 +83,17 @@ export default function MatchCard({ r, i, m, compact }) {
       layout
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      className={"mtch" + (compact ? " cmp" : "") + (realCompact ? " cmpd" : "") + (open && !lk ? " live" : "")}
+      className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (open && !lk ? " live" : "")}
     >
-      <div className="rnd">
-        <span>{compact && r > 0 ? "" : roundLabel}</span>
-        <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {predScore && <span style={{ color: "var(--coral)" }}>{predScore}</span>}
-          {sc && <span>{sc}</span>}
-        </span>
-      </div>
+      {(label || predScore || sc) && (
+        <div className="rnd">
+          <span>{label}</span>
+          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {predScore && <span style={{ color: "var(--coral)" }}>{predScore}</span>}
+            {sc && <span>{sc}</span>}
+          </span>
+        </div>
+      )}
 
       {realCompact ? (
         <>
@@ -100,7 +110,6 @@ export default function MatchCard({ r, i, m, compact }) {
         <>
           <Side team={m.a} />
           <Side team={m.b} />
-
           {canPredict && (
             <div className="pred">
               <span className="predl">{lx.pred}</span>
@@ -111,7 +120,6 @@ export default function MatchCard({ r, i, m, compact }) {
               </div>
             </div>
           )}
-
           {canPredict && tie && (
             <div className="pen">
               {lx.whoAdv}

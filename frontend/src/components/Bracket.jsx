@@ -131,7 +131,7 @@ export default function Bracket() {
               </div>
               <div className="col-body">
                 {idxs.map((i) => (
-                  <MatchCard key={i} r={colR} i={i} m={(rounds[colR] || [])[i] || {}} compact={compact} />
+                  <MatchCard key={i} r={colR} i={i} m={(rounds[colR] || [])[i] || {}} column compact={compact} />
                 ))}
               </div>
             </div>
