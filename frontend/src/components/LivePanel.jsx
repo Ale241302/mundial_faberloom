@@ -112,6 +112,54 @@ function StatsGrid({ match, txt }) {
   );
 }
 
+function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
+  const round = q.round, index = q.index;
+  const has = round != null && index != null;
+  const myp = has ? (predictions?.[round]?.[index] || predictions?.[String(round)]?.[String(index)] || {}) : {};
+  const can = !!(has && engine && !engine.lock(round, index) && !engine.played(round, index)
+    && !engine.closed(round, index) && boot?.state?.rounds_enabled?.[String(round)]);
+  const m = { a: q.home, b: q.away };
+  let hs = null, as = null;
+  if (q.score && String(q.score).includes("-")) {
+    const pr = String(q.score).split("-"); hs = parseInt(pr[0], 10); as = parseInt(pr[1], 10);
+    if (Number.isNaN(hs)) hs = null; if (Number.isNaN(as)) as = null;
+  }
+  const myPick = myp.pick || "";
+  const aiTxt = (q.fav && q.fav_prob != null) ? (txt.aiNext || "").replace("{p}", q.fav_prob).replace("{team}", q.fav) : "";
+  const stat = q.status === "live" ? `${txt.liveBadge || "EN VIVO"} ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtTime(q.date, lang));
+  return (
+    <div className={"lp-card" + (q.status === "live" ? " is-live" : "")}>
+      <div className="lp-cardhd">
+        <span className="lp-ct"><Flag team={q.home} /> {tn(q.home, lang)}</span>
+        <span className="lp-cmid"><b>{q.status === "scheduled" ? "vs" : (q.score || "vs")}</b><em>{stat}</em></span>
+        <span className="lp-ct right">{tn(q.away, lang)} <Flag team={q.away} /></span>
+      </div>
+      {aiTxt && <div className="lp-cai">{aiTxt}</div>}
+      {has && (
+        <div className="lp-crow">
+          <span className="lp-cl">{(txt && txt.title) ? "Tu pronóstico" : "Tu pronóstico"}</span>
+          {can ? (
+            <span className="lp-predin">
+              <input type="number" min="0" inputMode="numeric" value={myp.goal_a != null ? myp.goal_a : ""}
+                onChange={(e) => mc.goal(round, index, "a", e.target.value, m)} />
+              <em>–</em>
+              <input type="number" min="0" inputMode="numeric" value={myp.goal_b != null ? myp.goal_b : ""}
+                onChange={(e) => mc.goal(round, index, "b", e.target.value, m)} />
+            </span>
+          ) : (<b>{myPick ? tn(myPick, lang) : "—"}</b>)}
+          {myPick && <b className="lp-predwin">→ {tn(myPick, lang)}</b>}
+          <span className="lp-cl lp-csep">· Real</span>
+          <span className="lp-realbox">
+            <input disabled value={hs != null ? hs : ""} placeholder="–" />
+            <em>–</em>
+            <input disabled value={as != null ? as : ""} placeholder="–" />
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LivePanel() {
   const { lang, livePanel, predictions, engine, boot, mc } = useApp();
   const txt = LX(lang).livePanel || {};
@@ -229,12 +277,7 @@ export default function LivePanel() {
         <div className="lp-queue">
           <div className="lp-qh">Más partidos · <b className="lp-qday">{dayHdr}</b></div>
           {dayList.map((q, k) => (
-            <div className={"lp-qrow" + (q.status === "live" ? " is-live" : "")} key={k}>
-              <span className="lp-qt"><Flag team={q.home} /> {tn(q.home, lang)}</span>
-              <b className="lp-qsc">{q.status === "scheduled" ? "vs" : (q.score || "vs")}</b>
-              <span className="lp-qt right">{tn(q.away, lang)} <Flag team={q.away} /></span>
-              <em className="lp-qst">{q.status === "live" ? `EN VIVO ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtTime(q.date, lang))}</em>
-            </div>
+            <LpCard key={k} q={q} lang={lang} txt={txt} predictions={predictions} mc={mc} engine={engine} boot={boot} />
           ))}
         </div>
       )}
