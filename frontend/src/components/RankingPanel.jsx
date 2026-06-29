@@ -11,7 +11,7 @@ const TXT = {
 };
 
 export default function RankingPanel() {
-  const { lang } = useApp();
+  const { lang, user } = useApp();
   const t = TXT[lang] || TXT.es;
   const [rows, setRows] = useState(null);
   const [ai, setAi] = useState(null);
@@ -24,8 +24,9 @@ export default function RankingPanel() {
       .catch(() => setRows([]))
       .finally(() => setBusy(false));
   }, []);
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { const t = setInterval(load, 45000); return () => clearInterval(t); }, [load]);
+  // recarga al montar y cada vez que cambia la sesión (login/logout) -> mi puesto al instante
+  useEffect(() => { load(); }, [load, user]);
+  useEffect(() => { const i = setInterval(load, 45000); return () => clearInterval(i); }, [load]);
 
   const mine = (rows || []).find((r) => r.me);
   const top = (rows || []).slice(0, 100);
