@@ -62,24 +62,34 @@ function LoginModal({ onClose }) {
 function RegisterModal({ onClose }) {
   const { lang, afterAuth, setModal, toast } = useApp();
   const [name, setName] = useState(""); const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("");
   const [p1, setP1] = useState(""); const [p2, setP2] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const submit = async () => {
     setErr("");
-    if (!name.trim()) return setErr("Escribe tu nombre");
+    if (!name.trim()) return setErr("Escribe tu usuario");
+    if (!country) return setErr("Selecciona tu país");
     if (p1.length < 6) return setErr("La contraseña debe tener al menos 6 caracteres");
     if (p1 !== p2) return setErr("Las contraseñas no coinciden");
     setBusy(true);
-    try { const p = await API.register({ name, email, password: p1, lang }); await afterAuth(p); toast("Cuenta creada. Bienvenido, " + name); }
+    try { const p = await API.register({ name, email, password: p1, lang, country }); await afterAuth(p); toast("Cuenta creada. Bienvenido, " + name); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
     <Modal onClose={onClose}>
       <div className="flhd"><b>Crear cuenta</b><span className="x" onClick={onClose}>✕</span></div>
-      <label className="fl-l">Nombre</label>
-      <input className="fl-in" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+      <label className="fl-l">Usuario</label>
+      <input className="fl-in" value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" />
       <label className="fl-l">Correo</label>
       <input className="fl-in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+      <label className="fl-l">País</label>
+      <span className="pe-cty">
+        {country && <img className="rkflag" src={flagUrl(country)} alt="" />}
+        <select className="fl-in" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <option value="">— Selecciona tu país —</option>
+          {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+        </select>
+      </span>
       <label className="fl-l">Contraseña</label>
       <PwInput value={p1} onChange={(e) => setP1(e.target.value)} />
       <label className="fl-l">Repetir contraseña</label>

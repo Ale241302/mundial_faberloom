@@ -99,7 +99,9 @@ export function makeEngine(boot) {
         const rs = locks[i].score || "";
         if (rs && rs.includes("-") && up.goal_a != null && up.goal_b != null) {
           const [ra, rb] = rs.split("-").map((x) => parseInt(x, 10));
-          if (Number(up.goal_a) === ra && Number(up.goal_b) === rb) pts += EXACT_BONUS[r];
+          const ha = Number(up.goal_a) === ra, hb = Number(up.goal_b) === rb;
+          if (ha && hb) pts += 5;          // marcador exacto
+          else if (ha || hb) pts += 2;     // goles de un solo equipo
         }
       });
     }

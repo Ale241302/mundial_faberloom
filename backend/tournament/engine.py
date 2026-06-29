@@ -150,8 +150,12 @@ class Engine:
                 if rs and "-" in rs and up.get("goal_a") is not None and up.get("goal_b") is not None:
                     try:
                         ra, rb = [int(x) for x in rs.split("-")[:2]]
-                        if int(up["goal_a"]) == ra and int(up["goal_b"]) == rb:
-                            pts += EXACT_BONUS[r]
+                        ha = int(up["goal_a"]) == ra
+                        hb = int(up["goal_b"]) == rb
+                        if ha and hb:
+                            pts += 5          # marcador exacto
+                        elif ha or hb:
+                            pts += 2          # goles de un solo equipo
                     except (ValueError, TypeError):
                         pass
         return round(pts)
