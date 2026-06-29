@@ -58,6 +58,26 @@ export function makeEngine(boot) {
 
   const surprise = (p) => (p && p < 0.5 ? Math.min(3, 0.5 / p) : 1);
 
+  // Modelo in-play: prob. de resultado dado el marcador actual + minuto + fuerza.
+  // Goles restantes ~ Poisson, total ~2.7 repartido por fuerza (Elo). Instantáneo.
+  function inPlay(pa, sa, sb, minute, status) {
+    const fin = status === "finished";
+    const left = fin ? 0 : Math.max(0, (90 - (minute || 0))) / 90;
+    const share = 0.5 + (pa - 0.5) * 0.7;        // cuota de ataque de A
+    const total = 2.7 * left;
+    const la = total * share, lb = total * (1 - share);
+    const pois = (k, l) => { let f = 1; for (let j = 2; j <= k; j++) f *= j; return Math.exp(-l) * Math.pow(l, k) / f; };
+    const cap = 8;
+    let pA = 0, pD = 0, pB = 0;
+    for (let x = 0; x <= cap; x++) for (let y = 0; y <= cap; y++) {
+      const p = pois(x, la) * pois(y, lb);
+      const d = (sa + x) - (sb + y);
+      if (d > 0) pA += p; else if (d < 0) pB += p; else pD += p;
+    }
+    const s = pA + pD + pB || 1;
+    return { pA: pA / s, pD: pD / s, pB: pB / s };  // gana A / empate / gana B
+  }
+
   function scoreUser(userPicks) {
     const probF = boot.prob_f || {};
     let pts = 0;
@@ -82,5 +102,5 @@ export function makeEngine(boot) {
     return Math.round(pts);
   }
 
-  return { teams, round0, elo, pWin, lock, score, statusOf, played, closed, resultOf, dateOf, confirmed, resolve, scoreUser, surprise };
+  return { teams, round0, elo, pWin, lock, score, statusOf, played, closed, resultOf, dateOf, confirmed, resolve, scoreUser, surprise, inPlay };
 }

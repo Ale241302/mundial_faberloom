@@ -8,6 +8,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const { lang, engine, boot, mode, predictions, isAdmin, mc } = useApp();
   const l = L(lang);
   const lx = LX(lang);
+  const [pop, setPop] = useState(null);
   m = m || {};
   const known = m.a && m.b;
   const pa = known ? engine.pWin(m.a, m.b) : 0.5;
@@ -77,7 +78,12 @@ export default function MatchCard({ r, i, m, compact, column }) {
       whileHover={isPlayed ? {} : { y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (isPlayed ? " played" : "")}
+      style={{ position: "relative" }}
+      onMouseEnter={(e) => { const b = e.currentTarget.getBoundingClientRect(); setPop({ x: b.left + b.width / 2, y: b.top }); }}
+      onMouseLeave={() => setPop(null)}
     >
+      {known && pop && <MatchPop a={m.a} b={m.b} pa={pa} res={res} engine={engine} pos={pop} />}
+
       {(label || predScore) && (
         <div className="rnd">
           <span>{label}</span>
@@ -129,6 +135,45 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
       {roundOpenResult && <AdminScore r={r} i={i} m={m} sc={engine.score(r, i)} />}
     </motion.div>
+  );
+}
+
+function MatchPop({ a, b, pa, res, engine, pos }) {
+  const live = res && res.status === "live";
+  const pct = (x) => Math.round(x * 100);
+  let ip = null, minute = "";
+  if (live && res.score && res.score.includes("-")) {
+    const [sa, sb] = res.score.split("-").map((x) => parseInt(x, 10));
+    minute = (res.minute || "").toString().replace(/[^0-9+']/g, "");
+    const mn = parseInt(minute, 10) || 0;
+    if (!isNaN(sa) && !isNaN(sb)) ip = engine.inPlay(pa, sa, sb, mn, "live");
+  }
+  return (
+    <div className="predpop" style={{ position: "fixed", left: pos.x, top: pos.y - 8, transform: "translate(-50%,-100%)", zIndex: 60, pointerEvents: "none" }}>
+      <div className="pp-h">Pronóstico · pre-partido</div>
+      <div className="pp-row"><Flag team={a} /><span className="pp-nm">{a}</span><span className="pp-pc">{pct(pa)}%</span></div>
+      <div className="pp-bar"><i className="a" style={{ width: pct(pa) + "%" }} /><i className="b" style={{ width: pct(1 - pa) + "%" }} /></div>
+      <div className="pp-row"><Flag team={b} /><span className="pp-nm">{b}</span><span className="pp-pc">{pct(1 - pa)}%</span></div>
+
+      {ip && (
+        <>
+          <div className="pp-h" style={{ marginTop: 10 }}>
+            <span className="pp-livedot" /> En vivo {minute ? minute + "'" : ""} · {res.score}
+          </div>
+          <div className="pp-bar pp3">
+            <i className="a" style={{ width: pct(ip.pA) + "%" }} />
+            <i className="d" style={{ width: pct(ip.pD) + "%" }} />
+            <i className="b" style={{ width: pct(ip.pB) + "%" }} />
+          </div>
+          <div className="pp-leg">
+            <span>{a} {pct(ip.pA)}%</span>
+            <span>X {pct(ip.pD)}%</span>
+            <span>{b} {pct(ip.pB)}%</span>
+          </div>
+          <div className="pp-suc">Éxito (no perder): {a} {pct(ip.pA + ip.pD)}% · {b} {pct(ip.pB + ip.pD)}%</div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -105,6 +105,12 @@ input{font-family:var(--sans);border:1px solid var(--line);border-radius:8px;pad
 .predpop .pp-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--paper2);margin:6px 0}
 .predpop .pp-bar i{display:block;height:100%}
 .predpop .pp-bar i.a{background:var(--coral)}.predpop .pp-bar i.b{background:var(--slate)}
+.predpop .pp-bar i.d{background:var(--taupe);opacity:.5}
+.predpop .pp3{height:8px}
+.predpop .pp-leg{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--taupe);margin-top:-2px}
+.predpop .pp-suc{font-size:11px;color:var(--ink);margin-top:7px;border-top:1px solid var(--line);padding-top:6px}
+.pp-livedot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e23;margin-right:5px;vertical-align:middle;animation:lpulse 1.1s infinite}
+@keyframes lpulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* mobile bracket tabs */
 .rtabs{display:flex;gap:3px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:12px}
