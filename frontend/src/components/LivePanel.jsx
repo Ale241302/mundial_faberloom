@@ -114,9 +114,9 @@ function ProbBar({ home, away, sa, sb, minute, status, engine, lang, txt }) {
     <div className="lp-prob">
       <div className="lp-prob-h">{live ? txt.winLive : txt.winPre}{live ? " (90')" : ""}</div>
       <div className="lp-prob-row">
-        <span className="pp"><span className="pl">{tn(home, lang)}</span><b>{pc(ip.pA)}%</b></span>
-        <span className="pp"><span className="pl">{txt.draw}</span><b>{pc(ip.pD)}%</b></span>
-        <span className="pp right"><span className="pl">{tn(away, lang)}</span><b>{pc(ip.pB)}%</b></span>
+        <span className="pp a"><span className="pl">{tn(home, lang)}</span><b>{pc(ip.pA)}%</b></span>
+        <span className="pp d"><span className="pl">{txt.draw}</span><b>{pc(ip.pD)}%</b></span>
+        <span className="pp b right"><span className="pl">{tn(away, lang)}</span><b>{pc(ip.pB)}%</b></span>
       </div>
       <div className="lp-prob-bar">
         <i className="a" style={{ width: pc(ip.pA) + "%" }} />
@@ -191,7 +191,23 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
           </span>
         </div>
       )}
-      {q.stats && <StatsGrid match={q} txt={txt} />}
+      <StatsSection match={q} txt={txt} />
+    </div>
+  );
+}
+
+function StatsSection({ match, txt }) {
+  const [open, setOpen] = useState(false);
+  if (!match || !match.stats) return null;
+  return (
+    <div className={"lp-statsec" + (open ? " open" : "")}>
+      <button className="lp-statstg" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span>{txt.statsTitle || "Estadísticas"}</span>
+        <svg className="chev" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && <StatsGrid match={match} txt={txt} />}
     </div>
   );
 }
@@ -301,7 +317,7 @@ export default function LivePanel() {
       )}
 
       <div className="lp-meta">{meta || ND}</div>
-      <StatsGrid match={main} txt={txt} />
+      <StatsSection match={main} txt={txt} />
 
       {!hasLive && last && last.id !== main.id && (
         <div className="lp-last">
