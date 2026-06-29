@@ -7,14 +7,14 @@ import Landing from "./components/Landing.jsx";
 import Modals from "./components/Modals.jsx";
 import Toast from "./components/Toast.jsx";
 
-// /reset/:token → modal de nueva contraseña
+// /reset/:token → modal de nueva contraseña (sobre el simulador)
 function ResetCatcher() {
   const { token } = useParams();
   const { setModal } = useApp();
   const nav = useNavigate();
   useEffect(() => {
     if (token) setModal({ type: "reset", data: { token } });
-    nav("/", { replace: true });
+    nav("/simulador", { replace: true });
   }, [token]); // eslint-disable-line
   return null;
 }
@@ -30,7 +30,7 @@ function ActivateCatcher() {
         .then((d) => { if (d.valid) setModal({ type: "complete", data: { token, email: d.email } }); })
         .catch(() => {});
     }
-    nav("/", { replace: true });
+    nav("/simulador", { replace: true });
   }, [token]); // eslint-disable-line
   return null;
 }
@@ -57,10 +57,11 @@ export default function App() {
   return (
     <>
       <Routes>
-        <Route path="/faberloom" element={<Landing />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/simulador" element={<><Simulator /><CompleteFromLocal /></>} />
         <Route path="/activar/:token" element={<><Simulator /><ActivateCatcher /></>} />
         <Route path="/reset/:token" element={<><Simulator /><ResetCatcher /></>} />
-        <Route path="*" element={<><Simulator /><CompleteFromLocal /></>} />
+        <Route path="*" element={<Landing />} />
       </Routes>
       <Modals />
       <Toast />

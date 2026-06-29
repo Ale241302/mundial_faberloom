@@ -19,3 +19,4 @@ uploads/
 .thumbnail
 *.thumbnail
 Simulador Mundial 2026 - FaberLoom.html
+frontend/vite.config.js.timestamp-*.mjs

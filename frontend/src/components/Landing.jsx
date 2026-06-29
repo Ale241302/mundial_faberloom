@@ -148,7 +148,7 @@ export default function Landing() {
     }
   }, []);
 
-  const toSim = () => nav("/");
+  const toSim = () => nav("/simulador");
 
   return (
     <div className="lp">
