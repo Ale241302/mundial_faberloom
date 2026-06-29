@@ -51,5 +51,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]
 
+    @property
+    def is_admin(self):
+        return self.role == self.Role.ADMIN
+
     class Meta:
         ordering = ["-date_joined"]
