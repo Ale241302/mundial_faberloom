@@ -134,8 +134,9 @@ class Engine:
         return min(3.0, 0.5 / p) if (p and p < 0.5) else 1.0
 
     def score_user(self, user_preds):
-        _, prob_f = self.freeze("fav")
-        pts = 0.0
+        # Por partido: ganador +3 ; cada equipo con goles acertados +2 (independiente).
+        # Máx 7 (gana + ambos marcadores). 0 si no acierta nada. Sin escalar por ronda.
+        pts = 0
         for r in range(5):
             res_r = self.results.get(r, {})
             ups = user_preds.get(r, {})
@@ -144,18 +145,15 @@ class Engine:
                 if not up:
                     continue
                 if up.get("pick") and up["pick"] == real.get("winner"):
-                    p = (prob_f.get(r, {}).get(i, {}) or {}).get(up["pick"], 0.5)
-                    pts += BASE[r] * self.surprise(p)
+                    pts += 3                       # acertar el ganador del cruce
                 rs = real.get("score") or ""
                 if rs and "-" in rs and up.get("goal_a") is not None and up.get("goal_b") is not None:
                     try:
                         ra, rb = [int(x) for x in rs.split("-")[:2]]
-                        ha = int(up["goal_a"]) == ra
-                        hb = int(up["goal_b"]) == rb
-                        if ha and hb:
-                            pts += 5          # marcador exacto
-                        elif ha or hb:
-                            pts += 2          # goles de un solo equipo
+                        if int(up["goal_a"]) == ra:
+                            pts += 2               # goles del equipo local
+                        if int(up["goal_b"]) == rb:
+                            pts += 2               # goles del equipo visitante
                     except (ValueError, TypeError):
                         pass
         return round(pts)
@@ -166,7 +164,7 @@ class Engine:
         for r in range(5):
             for i, real in self.results.get(r, {}).items():
                 if ai_picks.get(r, {}).get(i) == real.get("winner"):
-                    pts += BASE[r]
+                    pts += 3
         return pts
 
 

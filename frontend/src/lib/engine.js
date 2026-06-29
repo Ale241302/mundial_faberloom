@@ -92,16 +92,12 @@ export function makeEngine(boot) {
         const real = locks[i].winner;
         const up = ups[i];
         if (!up || !real) return;
-        if (up.pick && up.pick === real) {
-          const p = (probF[r]?.[i] || probF[String(r)]?.[String(i)] || {})[up.pick] || 0.5;
-          pts += BASE_PTS[r] * surprise(p);
-        }
+        if (up.pick && up.pick === real) pts += 3;   // acertar el ganador
         const rs = locks[i].score || "";
         if (rs && rs.includes("-") && up.goal_a != null && up.goal_b != null) {
           const [ra, rb] = rs.split("-").map((x) => parseInt(x, 10));
-          const ha = Number(up.goal_a) === ra, hb = Number(up.goal_b) === rb;
-          if (ha && hb) pts += 5;          // marcador exacto
-          else if (ha || hb) pts += 2;     // goles de un solo equipo
+          if (Number(up.goal_a) === ra) pts += 2;    // goles local
+          if (Number(up.goal_b) === rb) pts += 2;    // goles visitante
         }
       });
     }
