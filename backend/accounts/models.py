@@ -38,6 +38,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.USER)
     lang = models.CharField(max_length=5, default="es")
     marketing_consent = models.BooleanField(default=False)
+    signup_ip = models.CharField(max_length=45, blank=True)       # IP del registro
+    source = models.CharField(max_length=20, blank=True)          # landing | simulador
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

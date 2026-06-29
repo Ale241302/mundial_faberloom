@@ -16,6 +16,7 @@ export default function Modals() {
       {t === "register" && <RegisterModal key="reg" onClose={close} />}
       {t === "recover" && <RecoverModal key="rec" onClose={close} />}
       {t === "reset" && <ResetModal key="reset" token={modal.data.token} onClose={close} />}
+      {t === "complete" && <CompleteModal key="complete" token={modal.data.token} email={modal.data.email} onClose={close} />}
       {t === "profile" && <ProfileModal key="prof" onClose={close} />}
       {t === "admin" && <AdminModal key="adm" onClose={close} />}
       {t === "team" && <TeamDossier key="team" name={modal.data.name} onClose={close} />}
@@ -367,9 +368,50 @@ function MatchAdminRow({ round, index, model, teams }) {
         <span className="plteams"><Flag team={model.a} /> {model.a} <span style={{ color: "var(--taupe)" }}>vs</span> <Flag team={model.b} /> {model.b}</span>
       )}
       <label className="sw" style={{ marginLeft: "auto" }}>
-        <input type="checkbox" checked={!closed} onChange={toggleClose} /><span className="tk" />
-        <span>{closed ? "Cerrado" : "Abierto"}</span>
+        <input type="checkbox" checked={!closed} onChange={toggleClose} />
+        <span className="tk" />
+        {closed ? "Cerrado" : "Abierto"}
       </label>
     </div>
+  );
+}
+
+function CompleteModal({ token, email, onClose }) {
+  const { afterAuth, toast } = useApp();
+  const [name, setName] = useState("");
+  const [p1, setP1] = useState("");
+  const [p2, setP2] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setErr("");
+    if (!name.trim()) return setErr("Escribe tu nombre");
+    if (p1.length < 6) return setErr("La contraseña debe tener al menos 6 caracteres");
+    if (p1 !== p2) return setErr("Las contraseñas no coinciden");
+    setBusy(true);
+    try {
+      const p = await API.activationComplete({ token, name: name.trim(), password: p1 });
+      try { localStorage.removeItem("fl_pending"); } catch (_) {}
+      await afterAuth(p);
+      toast("¡Cuenta activada! Bienvenido, " + (p.user.name || ""));
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Modal onClose={onClose}>
+      <div className="flhd"><b>Activá tu cuenta</b><span className="x" onClick={onClose}>✕</span></div>
+      <div className="note" style={{ marginBottom: 8 }}>
+        Ya estás registrado{email ? <> como <b>{email}</b></> : ""}. Solo falta elegir tu nombre y una contraseña para entrar.
+      </div>
+      <label className="fl-l">Nombre</label>
+      <input className="fl-in" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+      <label className="fl-l">Contraseña</label>
+      <PwInput value={p1} onChange={(e) => setP1(e.target.value)} />
+      <label className="fl-l">Repetir contraseña</label>
+      <PwInput value={p2} onChange={(e) => setP2(e.target.value)} />
+      <div className="fl-err">{err}</div>
+      <button className="coral" style={{ width: "100%", marginTop: 10 }} disabled={busy} onClick={submit}>
+        {busy ? "Activando…" : "Activar y entrar"}
+      </button>
+    </Modal>
   );
 }

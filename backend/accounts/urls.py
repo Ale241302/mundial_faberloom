@@ -9,4 +9,7 @@ urlpatterns = [
     path("password/reset/", views.password_reset_request),
     path("password/reset/validate/", views.password_reset_validate),
     path("password/reset/confirm/", views.password_reset_confirm),
+    path("waitlist/", views.waitlist),
+    path("activation/validate/", views.activation_validate),
+    path("activation/complete/", views.activation_complete),
 ]

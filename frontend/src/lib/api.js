@@ -27,6 +27,9 @@ export const API = {
   resetRequest: (email) => api.post(`/auth/password/reset/`, { email }),
   resetValidate: (token) => api.get(`/auth/password/reset/validate/?token=${encodeURIComponent(token)}`),
   resetConfirm: (b) => api.post(`/auth/password/reset/confirm/`, b),
+  waitlist: (b) => api.post(`/auth/waitlist/`, b),
+  activationValidate: (token) => api.get(`/auth/activation/validate/?token=${encodeURIComponent(token)}`),
+  activationComplete: (b) => api.post(`/auth/activation/complete/`, b),
   adminUsers: () => api.get(`/admin/users/`),
   adminUserPatch: (id, b) => api.patch(`/admin/users/${id}/`, b),
   adminUserDelete: (id) => api.del(`/admin/users/${id}/`),
@@ -40,4 +43,7 @@ export const API = {
   adminMatchLock: (b) => api.post(`/admin/match-lock/`, b),
   adminPredictions: () => api.get(`/admin/predictions/`),
   adminPredictionDelete: (id) => api.del(`/admin/predictions/${id}/`),
+  waitlist: (b) => api.post(`/auth/waitlist/`, b),
+  activationValidate: (token) => api.get(`/auth/activation/validate/?token=${encodeURIComponent(token)}`),
+  activationComplete: (b) => api.post(`/auth/activation/complete/`, b),
 };

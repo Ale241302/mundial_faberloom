@@ -1,0 +1,40 @@
+{% extends "emails/base.html" %}
+{% block title %}{{ t.subject }}{% endblock %}
+{% block preheader %}{{ t.preheader }}{% endblock %}
+{% block content %}
+
+<div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C96442;margin-bottom:10px;">
+  ★ Acceso anticipado
+</div>
+
+<h1 style="margin:0 0 10px 0;font-family:Georgia,'EB Garamond',serif;font-weight:500;font-size:30px;line-height:1.08;color:#1F1E1C;">
+  {{ t.h1a }} <span style="font-style:italic;color:#C96442;">{{ t.h1b }}</span>.
+</h1>
+
+<p style="margin:0 0 20px 0;color:#1F1E1C;font-size:15px;line-height:1.6;">
+  {{ t.lead|safe }}
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 22px 0;">
+  <tr><td style="background:#EDE8DF;border:1px solid #D8D0C0;border-radius:12px;padding:16px 18px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr><td style="padding:5px 0;font-size:14px;color:#1F1E1C;"><span style="color:#C96442;font-weight:700;">1</span>&nbsp;&nbsp;{{ t.b1 }}</td></tr>
+      <tr><td style="padding:5px 0;font-size:14px;color:#1F1E1C;"><span style="color:#C96442;font-weight:700;">2</span>&nbsp;&nbsp;{{ t.b2 }}</td></tr>
+      <tr><td style="padding:5px 0;font-size:14px;color:#1F1E1C;"><span style="color:#C96442;font-weight:700;">3</span>&nbsp;&nbsp;{{ t.b3 }}</td></tr>
+    </table>
+  </td></tr>
+</table>
+
+<p style="margin:0 0 16px 0;color:#1F1E1C;font-size:14px;line-height:1.6;">{{ t.after }}</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+  <td style="border-radius:9px;background:#C96442;">
+    <a href="{{ cta_url }}" style="display:inline-block;padding:13px 26px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#F4F1ED;text-decoration:none;border-radius:9px;">
+      {{ t.cta }}
+    </a>
+  </td>
+</tr></table>
+
+<p style="margin:22px 0 0 0;font-size:12px;color:#8A8278;">{{ t.ps }}</p>
+
+{% endblock %}

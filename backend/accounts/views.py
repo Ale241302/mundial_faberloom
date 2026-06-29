@@ -5,12 +5,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from emails.service import send_welcome_email, send_password_reset_email
+from emails.service import send_welcome_email, send_password_reset_email, send_waitlist_email
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
 )
-from .tokens import make_reset_token, read_reset_token
+from .tokens import (
+    make_reset_token, read_reset_token,
+    make_activation_token, read_activation_token,
+)
+
+
+def client_ip(request):
+    """IP real del cliente detrás de Cloudflare / nginx."""
+    cf = request.META.get("HTTP_CF_CONNECTING_IP")
+    if cf:
+        return cf.strip()[:45]
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()[:45]
+    return (request.META.get("REMOTE_ADDR") or "")[:45]
 
 User = get_user_model()
 
@@ -26,6 +40,9 @@ def register(request):
     ser = RegisterSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
     user = ser.save()
+    user.signup_ip = client_ip(request)
+    user.source = request.data.get("source") or "simulador"
+    user.save(update_fields=["signup_ip", "source"])
     try:
         send_welcome_email(user)
     except Exception:
@@ -107,4 +124,80 @@ def password_reset_confirm(request):
     user.set_password(ser.validated_data["password"])
     user.save(update_fields=["password"])
     Token.objects.filter(user=user).delete()  # cerrar sesiones previas
+    return Response(_auth_payload(user))
+
+
+# ----------------------------------------------------------------------
+#  Lista de espera (landing faberloom.ai) + activación de cuenta
+# ----------------------------------------------------------------------
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def waitlist(request):
+    """Captura de correo desde la landing. Crea un usuario SIN contraseña
+    (queda 'pendiente'), guarda la IP y envía el correo de lista de espera
+    con un botón que activa la cuenta en el simulador. Idempotente."""
+    email = (request.data.get("email") or "").strip().lower()
+    lang = (request.data.get("lang") or "es")[:5]
+    if not email or "@" not in email:
+        return Response({"detail": "Correo inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(email=email).first()
+    existed = bool(user)
+    if not user:
+        user = User(email=email, lang=lang, source="landing",
+                    marketing_consent=True, signup_ip=client_ip(request))
+        user.set_unusable_password()
+        user.save()
+    else:
+        # actualizar IP/idioma del último intento; no tocar contraseña
+        user.signup_ip = client_ip(request) or user.signup_ip
+        if lang:
+            user.lang = lang
+        user.save(update_fields=["signup_ip", "lang"])
+
+    pending = not user.has_usable_password()
+    token = make_activation_token(user)
+    try:
+        send_waitlist_email(user, token, lang)
+    except Exception:
+        pass
+    return Response({"ok": True, "existed": existed, "pending": pending, "token": token})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def activation_validate(request):
+    """Valida el token de activación (del correo o de localStorage) y dice si
+    la cuenta aún está pendiente de contraseña."""
+    data = read_activation_token(request.query_params.get("token", ""))
+    if not data:
+        return Response({"valid": False}, status=status.HTTP_400_BAD_REQUEST)
+    user = User.objects.filter(pk=data["uid"], email=data["em"]).first()
+    if not user:
+        return Response({"valid": False}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"valid": True, "email": user.email,
+                    "name": user.name, "pending": not user.has_usable_password()})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def activation_complete(request):
+    """Completa el registro: nombre + contraseña. Inicia sesión (devuelve token)."""
+    data = read_activation_token(request.data.get("token", ""))
+    if not data:
+        return Response({"detail": "El enlace no es válido o caducó."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    user = User.objects.filter(pk=data["uid"], email=data["em"]).first()
+    if not user:
+        return Response({"detail": "Usuario no encontrado."}, status=status.HTTP_400_BAD_REQUEST)
+    name = (request.data.get("name") or "").strip()
+    password = request.data.get("password") or ""
+    if len(password) < 6:
+        return Response({"detail": "La contraseña debe tener al menos 6 caracteres."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if name:
+        user.name = name[:120]
+    user.set_password(password)
+    user.is_active = True
+    user.save()
     return Response(_auth_payload(user))

@@ -32,3 +32,21 @@ def read_reset_token(token: str, max_age: int | None = None):
         return None
     except Exception:
         return None
+
+
+# --- Token de activación para registros desde la landing (lista de espera) ---
+ACT_SALT = "mundial.faberloom.activation"
+
+
+def make_activation_token(user) -> str:
+    return signing.dumps({"uid": user.pk, "em": user.email}, salt=ACT_SALT, compress=True)
+
+
+def read_activation_token(token: str, max_age: int | None = None):
+    """Devuelve {uid, em} si es válido; si no, None. Caducidad larga (30 días)."""
+    if max_age is None:
+        max_age = 60 * 60 * 24 * 30
+    try:
+        return signing.loads(token, salt=ACT_SALT, max_age=max_age)
+    except Exception:
+        return None
