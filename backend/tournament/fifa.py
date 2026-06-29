@@ -274,6 +274,7 @@ def _compact_match(m):
         "index": m.get("index"),
         "fav": pr.get("favorite"),
         "fav_prob": pr.get("favorite_prob"),
+        "stats": m.get("stats") or {},
     }
 
 
@@ -328,30 +329,39 @@ def _panel_from_db():
 
 
 def _augment_with_kimi(panel):
-    """Si FIFA no trae stats del partido destacado, Kimi las ESTIMA (marcadas
-    como estimación del modelo). Solo el partido en juego / próximo / último."""
-    from .kimi import estimate_match_stats
-    match = panel.get("in_play") or panel.get("next_match") or panel.get("last_result")
-    if not match:
-        return
-    stats = match.get("stats") or {}
-    missing = [k for k, v in stats.items()
-               if not v or (v.get("home") is None and v.get("away") is None)]
-    if not missing:
-        return
-    home = (match.get("home") or {}).get("name")
-    away = (match.get("away") or {}).get("name")
-    if not home or not away:
-        return
-    est = estimate_match_stats(home, away, match.get("score") or "", match.get("status") or "")
-    if not est:
-        return
-    for k in missing:
-        pair = est.get(k)
-        if pair and len(pair) == 2:
-            stats[k] = {"home": pair[0], "away": pair[1], "estimated": True}
-    match["stats"] = stats
-    match["stats_estimated"] = True
+    """Rellena stats faltantes (FIFA = null) con ESTIMACIONES marcadas. El partido
+    destacado usa Kimi (1 llamada); los de la lista usan heurística (sin LLM)."""
+    from .kimi import estimate_match_stats, _local_stats
+
+    def _name(side):
+        return side.get("name") if isinstance(side, dict) else side
+
+    def _fill(match, use_kimi):
+        if not match:
+            return
+        stats = match.get("stats") or {}
+        missing = [k for k, v in stats.items()
+                   if not v or (v.get("home") is None and v.get("away") is None)]
+        if not missing:
+            return
+        home, away = _name(match.get("home")), _name(match.get("away"))
+        if not home or not away:
+            return
+        score = match.get("score") or ""
+        est = (estimate_match_stats(home, away, score, match.get("status") or "")
+               if use_kimi else _local_stats(home, away, score))
+        if not est:
+            return
+        for k in missing:
+            pair = est.get(k)
+            if pair and len(pair) == 2:
+                stats[k] = {"home": pair[0], "away": pair[1], "estimated": True}
+        match["stats"] = stats
+        match["stats_estimated"] = True
+
+    _fill(panel.get("in_play") or panel.get("next_match") or panel.get("last_result"), True)
+    for q in (panel.get("queue") or []):
+        _fill(q, False)
 
 
 def get_live_panel(force=False):

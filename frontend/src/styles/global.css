@@ -310,3 +310,6 @@ select.fl-in{cursor:pointer}
 .lp-crow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px;margin-top:8px;padding-top:8px;border-top:1px dotted var(--line)}
 .lp-cl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--taupe)}
 .lp-csep{color:var(--line)}
+.lp-card .lp-stats{margin-top:8px}
+.lp-card .lp-stat{padding:5px 8px}
+.lp-card .lp-stat b{font-size:13px}

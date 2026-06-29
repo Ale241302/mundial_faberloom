@@ -156,6 +156,7 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
           </span>
         </div>
       )}
+      {q.stats && <StatsGrid match={q} txt={txt} />}
     </div>
   );
 }
