@@ -58,6 +58,7 @@ class Result(models.Model):
     score = models.CharField(max_length=12, blank=True)
     status = models.CharField(max_length=12, default="finished")  # scheduled|live|finished
     minute = models.CharField(max_length=8, blank=True)           # "73'" si en vivo
+    notified = models.BooleanField(default=False)                 # correo de resultado enviado
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -1,0 +1,59 @@
+{% extends "emails/base.html" %}
+{% block title %}Resultado del partido{% endblock %}
+{% block preheader %}{{ team_a }} {{ real_score }} {{ team_b }} — así te fue.{% endblock %}
+{% block content %}
+
+<h1 style="margin:0 0 6px 0;font-family:Georgia,'EB Garamond',serif;font-weight:500;font-size:28px;line-height:1.1;color:#1F1E1C;">
+  Resultado <span style="font-style:italic;color:#C96442;">final</span>.
+</h1>
+<p style="margin:0 0 18px 0;color:#1F1E1C;font-size:15px;">
+  Hola {{ name }}, terminó tu cruce. Acá el resultado real y cómo quedó tu pronóstico.
+</p>
+
+<!-- Resultado real -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 14px 0;">
+  <tr><td style="background:#EDE8DF;border:1px solid #D8D0C0;border-radius:10px;padding:16px 18px;">
+    <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8A8278;margin-bottom:8px;">
+      {{ round_label }} · resultado real
+    </div>
+    <div style="font-size:18px;color:#1F1E1C;">
+      {{ team_a }} <strong style="font-family:'Courier New',monospace;color:#C96442;">{{ real_score }}</strong> {{ team_b }}
+    </div>
+    <div style="margin-top:8px;font-size:14px;color:#1F1E1C;">
+      Ganador: <strong style="color:#C96442;">{{ real_winner }}</strong>
+    </div>
+  </td></tr>
+</table>
+
+<!-- Tu pronóstico -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 18px 0;">
+  <tr><td style="background:#F4F1ED;border:1px solid #D8D0C0;border-radius:10px;padding:16px 18px;">
+    <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#8A8278;margin-bottom:8px;">
+      tu pronóstico
+    </div>
+    <div style="font-size:15px;color:#1F1E1C;">
+      Ganador: <strong>{{ pick|default:"—" }}</strong>{% if pred_score %}
+      &middot; marcador <strong style="font-family:'Courier New',monospace;">{{ pred_score }}</strong>{% endif %}
+    </div>
+    <div style="margin-top:10px;font-size:14px;">
+      <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-family:'Courier New',monospace;font-size:12px;
+        {% if winner_hit %}background:#E3EFE3;color:#2E7D32;{% else %}background:#F3E0DB;color:#B23A1F;{% endif %}">
+        {% if winner_hit %}✓ acertaste el ganador{% else %}✗ ganador fallado{% endif %}
+      </span>
+      {% if exact_hit %}
+      <span style="display:inline-block;margin-left:6px;padding:3px 10px;border-radius:20px;font-family:'Courier New',monospace;font-size:12px;background:#FBEFD6;color:#9A6B12;">
+        ★ marcador exacto
+      </span>{% endif %}
+    </div>
+  </td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+  <td style="border-radius:8px;background:#C96442;">
+    <a href="{{ cta_url }}" style="display:inline-block;padding:11px 24px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#F4F1ED;text-decoration:none;border-radius:8px;">
+      Ver el ranking &rarr;
+    </a>
+  </td>
+</tr></table>
+
+{% endblock %}

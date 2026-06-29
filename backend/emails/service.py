@@ -57,6 +57,16 @@ def send_prediction_email(user, pred):
     )
 
 
+def send_match_result_email(user, ctx):
+    site_url, _ = _site()
+    _send(
+        subject=f"Resultado · {ctx.get('team_a','')} {ctx.get('real_score','')} {ctx.get('team_b','')}",
+        to_email=user.email,
+        template="match_result",
+        context={"name": user.name or "jugador", "cta_url": site_url, **ctx},
+    )
+
+
 def send_password_reset_email(user, token):
     site_url, _ = _site()
     reset_url = f"{site_url}/reset/{token}"

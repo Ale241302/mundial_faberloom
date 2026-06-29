@@ -118,6 +118,7 @@ def sync_results():
                     break
     apply_standings()
     recompute_form()
+    notify_finished()
     return n, logs
 
 
@@ -206,3 +207,68 @@ def apply_standings():
         t.save(update_fields=["stats"])
         n += 1
     return n
+
+
+def notify_finished():
+    """Envía un correo por cada partido recién FINALIZADO a los usuarios que lo
+    pronosticaron: resultado real (goles + ganador) vs su pronóstico. Idempotente
+    gracias a Result.notified (no reenvía)."""
+    from .engine import build_engine, ROUND_LABELS
+    from .models import Result, Prediction
+    from emails.service import send_match_result_email
+
+    pendientes = Result.objects.filter(status="finished", notified=False)
+    if not pendientes:
+        return 0
+    eng = build_engine()
+    rounds = eng.resolve("fav")["rounds"]
+    enviados = 0
+    for res in pendientes:
+        if res.round >= len(rounds):
+            continue
+        slots = rounds[res.round]
+        if res.index >= len(slots):
+            continue
+        a, b = slots[res.index].get("a"), slots[res.index].get("b")
+        if not a or not b:
+            continue
+        # orientar el marcador al orden a-b usando el ganador real
+        ga = gb = None
+        if res.score and "-" in res.score:
+            try:
+                n1, n2 = sorted([int(x) for x in res.score.split("-")[:2]], reverse=True)
+            except (ValueError, TypeError):
+                n1 = n2 = None
+            if n1 is not None:
+                if res.winner == a:
+                    ga, gb = n1, n2
+                elif res.winner == b:
+                    ga, gb = n2, n1
+                else:                       # empate (definido por penales)
+                    ga = gb = n1
+        real_score = f"{ga}-{gb}" if ga is not None else (res.score or "")
+
+        for pr in Prediction.objects.filter(round=res.round, index=res.index).select_related("user"):
+            user = pr.user
+            if not getattr(user, "email", ""):
+                continue
+            pred_score = ""
+            if pr.goal_a is not None and pr.goal_b is not None:
+                pred_score = f"{pr.goal_a}-{pr.goal_b}"
+            winner_hit = bool(pr.pick) and pr.pick == res.winner
+            exact_hit = bool(pred_score) and ga is not None and pr.goal_a == ga and pr.goal_b == gb
+            ctx = {
+                "round_label": ROUND_LABELS[res.round],
+                "team_a": a, "team_b": b,
+                "real_score": real_score, "real_winner": res.winner,
+                "pick": pr.pick, "pred_score": pred_score,
+                "winner_hit": winner_hit, "exact_hit": exact_hit,
+            }
+            try:
+                send_match_result_email(user, ctx)
+                enviados += 1
+            except Exception:
+                pass
+        res.notified = True
+        res.save(update_fields=["notified"])
+    return enviados
