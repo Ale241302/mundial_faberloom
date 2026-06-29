@@ -24,6 +24,22 @@ function fmtDate(value, lang) {
   return d.toLocaleString(lang, { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+function fmtTime(value, lang) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+}
+
+function dayLabel(value, lang) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const t = new Date(); const tm = new Date(); tm.setDate(t.getDate() + 1);
+  const L = ({ es: ["Hoy", "Mañana"], en: ["Today", "Tomorrow"], fr: ["Aujourd'hui", "Demain"], pt: ["Hoje", "Amanhã"] })[lang] || ["Hoy", "Mañana"];
+  if (d.toDateString() === t.toDateString()) return L[0];
+  if (d.toDateString() === tm.toDateString()) return L[1];
+  return d.toLocaleDateString(lang, { weekday: "long", day: "2-digit", month: "short" });
+}
+
 function fmtUpdated(value, lang) {
   if (!value) return ND;
   const d = new Date(value);
@@ -116,6 +132,11 @@ export default function LivePanel() {
   const myScore = (myp.goal_a != null && myp.goal_b != null) ? `${myp.goal_a}–${myp.goal_b}` : "";
   const realScore = (main && (main.status === "live" || main.status === "finished")) ? (main.score || "") : "";
   const queue = (panel.queue || []).filter((q) => !(main && q.home === main.home?.name && q.away === main.away?.name)).slice(0, 6);
+  const sameDay = (a, b) => a && b && new Date(a).toDateString() === new Date(b).toDateString();
+  const allQ = (panel.queue || []).filter((q) => !(main && q.home === main.home?.name && q.away === main.away?.name));
+  const todayQ = allQ.filter((q) => sameDay(q.date, new Date()));
+  const dayList = (todayQ.length ? todayQ : (allQ.length ? allQ.filter((q) => sameDay(q.date, allQ[0].date)) : [])).slice(0, 8);
+  const dayHdr = dayList.length ? dayLabel(dayList[0].date, lang) : "";
   const canPredictMain = !!(main && main.round != null && main.index != null && engine
     && !engine.lock(main.round, main.index) && !engine.played(main.round, main.index)
     && !engine.closed(main.round, main.index)
@@ -204,15 +225,15 @@ export default function LivePanel() {
         </div>
       )}
 
-      {queue.length > 0 && (
+      {dayList.length > 0 && (
         <div className="lp-queue">
-          <div className="lp-qh">Más partidos</div>
-          {queue.map((q, k) => (
+          <div className="lp-qh">Más partidos · <b className="lp-qday">{dayHdr}</b></div>
+          {dayList.map((q, k) => (
             <div className={"lp-qrow" + (q.status === "live" ? " is-live" : "")} key={k}>
               <span className="lp-qt"><Flag team={q.home} /> {tn(q.home, lang)}</span>
               <b className="lp-qsc">{q.status === "scheduled" ? "vs" : (q.score || "vs")}</b>
               <span className="lp-qt right">{tn(q.away, lang)} <Flag team={q.away} /></span>
-              <em className="lp-qst">{q.status === "live" ? `EN VIVO ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtDate(q.date, lang))}</em>
+              <em className="lp-qst">{q.status === "live" ? `EN VIVO ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtTime(q.date, lang))}</em>
             </div>
           ))}
         </div>

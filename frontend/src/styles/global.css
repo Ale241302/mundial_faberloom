@@ -295,3 +295,4 @@ select.fl-in{cursor:pointer}
 .lp-realbox em{color:var(--taupe);font-style:normal;font-family:var(--mono)}
 .lp-realtag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--taupe)}
 .lp-realtag.live{color:#e23;font-weight:700}
+.lp-qday{color:var(--coral);font-style:normal;text-transform:none;letter-spacing:0}
