@@ -247,3 +247,20 @@ select.fl-in{cursor:pointer}
 .lp-last b{color:var(--ink)}.lp-last small{color:var(--taupe);font-size:11px;width:100%}
 .lp-source{margin-top:9px;font-family:var(--mono);font-size:10px;color:var(--ocre)}
 @media (max-width:560px){.lp-main{grid-template-columns:1fr;gap:10px}.lp-team.left,.lp-team.right{align-items:center}.lp-head{flex-direction:column}.lp-upd{text-align:left}}
+
+/* pronóstico del usuario + cola de partidos en el panel */
+.lp-pred{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:6px;margin:-2px 0 12px;font-size:13px}
+.lp-pred>span{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--taupe)}
+.lp-pred b{color:var(--ink)} .lp-pred .lp-sep{color:var(--line)}
+.lp-queue{margin-top:13px;padding-top:11px;border-top:1px dotted var(--line)}
+.lp-qh{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--taupe);margin-bottom:7px}
+.lp-qrow{display:grid;grid-template-columns:1fr auto 1fr auto;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;font-size:13px}
+.lp-qrow:hover{background:var(--paper2)}
+.lp-qrow.is-live{background:rgba(201,100,66,.07)}
+.lp-qt{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap}
+.lp-qt.right{justify-content:flex-end}
+.lp-qt .flag{width:20px;height:14px}
+.lp-qsc{font-family:var(--mono);color:var(--ink);text-align:center;min-width:34px}
+.lp-qst{font-family:var(--mono);font-size:9px;text-transform:uppercase;color:var(--taupe);white-space:nowrap;justify-self:end}
+.lp-qrow.is-live .lp-qst{color:#e23;font-weight:700}
+@media (max-width:560px){.lp-qrow{grid-template-columns:1fr auto 1fr}.lp-qst{grid-column:1/-1;justify-self:center;margin-top:2px}}

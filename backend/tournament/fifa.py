@@ -261,6 +261,22 @@ def _normalize_match(item, eng=None):
     }
 
 
+def _compact_match(m):
+    pr = m.get("probabilities") or {}
+    return {
+        "home": (m.get("home") or {}).get("name"),
+        "away": (m.get("away") or {}).get("name"),
+        "score": m.get("score") or "",
+        "status": m.get("status"),
+        "minute": m.get("minute") or "",
+        "date": m.get("date") or m.get("local_date") or "",
+        "round": m.get("round"),
+        "index": m.get("index"),
+        "fav": pr.get("favorite"),
+        "fav_prob": pr.get("favorite_prob"),
+    }
+
+
 def _build_live_panel(items):
     from .engine import build_engine
 
@@ -284,6 +300,7 @@ def _build_live_panel(items):
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "refresh_seconds": LIVE_REFRESH_SECONDS,
         "api_fields": api_fields,
+        "queue": [_compact_match(m) for m in (live + scheduled)][:10],
     }
 
 
@@ -307,7 +324,7 @@ def _panel_from_db():
         pass
     return {"mode": "fallback", "in_play": None, "next_match": None, "last_result": last,
             "last_updated": datetime.now(timezone.utc).isoformat(),
-            "refresh_seconds": LIVE_REFRESH_SECONDS, "api_fields": [], "source_ok": False}
+            "refresh_seconds": LIVE_REFRESH_SECONDS, "api_fields": [], "queue": [], "source_ok": False}
 
 
 def _augment_with_kimi(panel):

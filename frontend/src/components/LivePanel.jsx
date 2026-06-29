@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Flag } from "./ui.jsx";
-import { LX } from "../lib/i18n.js";
+import { LX, tn } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
 const ND = "[N/D]";
@@ -109,6 +109,13 @@ export default function LivePanel() {
   const hasLive = !!panel.in_play;
   const main = panel.in_play || panel.next_match || panel.last_result;
   const last = panel.last_result;
+  const myp = (main && main.round != null && main.index != null)
+    ? (predictions?.[main.round]?.[main.index] || predictions?.[String(main.round)]?.[String(main.index)] || {})
+    : {};
+  const myPick = myp.pick || "";
+  const myScore = (myp.goal_a != null && myp.goal_b != null) ? `${myp.goal_a}–${myp.goal_b}` : "";
+  const realScore = (main && (main.status === "live" || main.status === "finished")) ? (main.score || "") : "";
+  const queue = (panel.queue || []).filter((q) => !(main && q.home === main.home?.name && q.away === main.away?.name)).slice(0, 6);
 
   const impact = useMemo(() => {
     if (!main || main.round == null || main.index == null) return "";
@@ -148,6 +155,14 @@ export default function LivePanel() {
         <TeamBlock side={main.away} align="right" />
       </div>
 
+      {(myPick || realScore) && (
+        <div className="lp-pred">
+          <span>Tu pronóstico</span>
+          <b>{myPick ? tn(myPick, lang) + (myScore ? ` ${myScore}` : "") : "—"}</b>
+          {realScore && <><span className="lp-sep">·</span><span>{main.status === "live" ? "En vivo" : "Resultado"}</span><b>{realScore}</b></>}
+        </div>
+      )}
+
       <div className="lp-meta">{meta || ND}</div>
       <StatsGrid match={main} txt={txt} />
 
@@ -156,6 +171,20 @@ export default function LivePanel() {
           <span>{txt.lastResult}</span>
           <b>{last.home?.name || ND} {scoreFor(last, ND)} {last.away?.name || ND}</b>
           <small>{aiLine(last, lang, txt)}</small>
+        </div>
+      )}
+
+      {queue.length > 0 && (
+        <div className="lp-queue">
+          <div className="lp-qh">Más partidos</div>
+          {queue.map((q, k) => (
+            <div className={"lp-qrow" + (q.status === "live" ? " is-live" : "")} key={k}>
+              <span className="lp-qt"><Flag team={q.home} /> {tn(q.home, lang)}</span>
+              <b className="lp-qsc">{q.status === "scheduled" ? "vs" : (q.score || "vs")}</b>
+              <span className="lp-qt right">{tn(q.away, lang)} <Flag team={q.away} /></span>
+              <em className="lp-qst">{q.status === "live" ? `EN VIVO ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtDate(q.date, lang))}</em>
+            </div>
+          ))}
         </div>
       )}
 
