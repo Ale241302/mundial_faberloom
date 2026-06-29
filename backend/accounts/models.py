@@ -40,6 +40,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     marketing_consent = models.BooleanField(default=False)
     signup_ip = models.CharField(max_length=45, blank=True)       # IP del registro
     source = models.CharField(max_length=20, blank=True)          # landing | simulador
+    country = models.CharField(max_length=2, blank=True)          # ISO-2 (bandera)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -52,10 +53,3 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ["-date_joined"]
-
-    def __str__(self):
-        return f"{self.name or self.email}"
-
-    @property
-    def is_admin(self):
-        return self.role == self.Role.ADMIN or self.is_superuser

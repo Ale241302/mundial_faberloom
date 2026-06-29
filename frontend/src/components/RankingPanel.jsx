@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { API } from "../lib/api.js";
 import { useApp } from "../lib/store.jsx";
+import { flagUrl } from "../lib/countries.js";
 
 const TXT = {
   es: { title: "Ranking de jugadores", reload: "Recargar", you: "TÚ", pts: "pts", empty: "Aún no hay jugadores con puntos.", your: "Tu puesto", ai: "IA" },
@@ -24,6 +25,7 @@ export default function RankingPanel() {
       .finally(() => setBusy(false));
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { const t = setInterval(load, 45000); return () => clearInterval(t); }, [load]);
 
   const mine = (rows || []).find((r) => r.me);
   const top = (rows || []).slice(0, 50);
@@ -48,14 +50,14 @@ export default function RankingPanel() {
           {top.map((r) => (
             <div key={r.id} className={"rankp-row" + (r.me ? " me" : "")}>
               <span className="rk">{r.rank}</span>
-              <span className="nm">{r.name}{r.me && <em className="ywho">{t.you}</em>}</span>
+              <span className="nm">{r.country && <img className="rkflag" src={flagUrl(r.country)} alt="" />}{r.name}{r.me && <em className="ywho">{t.you}</em>}</span>
               <span className="pt">{r.points}<small> {t.pts}</small></span>
             </div>
           ))}
           {showMineExtra && (
             <div className="rankp-row me">
               <span className="rk">{mine.rank}</span>
-              <span className="nm">{mine.name}<em className="ywho">{t.you}</em></span>
+              <span className="nm">{mine.country && <img className="rkflag" src={flagUrl(mine.country)} alt="" />}{mine.name}<em className="ywho">{t.you}</em></span>
               <span className="pt">{mine.points}<small> {t.pts}</small></span>
             </div>
           )}

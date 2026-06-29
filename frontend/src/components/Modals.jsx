@@ -4,6 +4,7 @@ import { Modal, Eye, Flag } from "./ui.jsx";
 import { L, LX, ROUND_LABELS, tn } from "../lib/i18n.js";
 import { API } from "../lib/api.js";
 import { useApp } from "../lib/store.jsx";
+import { COUNTRIES, flagUrl } from "../lib/countries.js";
 import TeamDossier from "./TeamDossier.jsx";
 
 export default function Modals() {
@@ -147,7 +148,15 @@ function ResetModal({ token, onClose }) {
 }
 
 function ProfileModal({ onClose }) {
-  const { lang, engine, predictions } = useApp();
+  const { lang, engine, predictions, user, setUser } = useApp();
+  const [pname, setPname] = useState(user?.name || "");
+  const [pcountry, setPcountry] = useState(user?.country || "");
+  const [psaved, setPsaved] = useState(false);
+  const saveProfile = () => {
+    API.mePatch({ name: pname.trim(), country: pcountry }).then((u) => {
+      setUser(u); setPsaved(true); setTimeout(() => setPsaved(false), 1500);
+    }).catch(() => {});
+  };
   const l = L(lang);
   const [rank, setRank] = useState(null);
   const [showPreds, setShowPreds] = useState(false);
@@ -158,6 +167,23 @@ function ProfileModal({ onClose }) {
   return (
     <Modal onClose={onClose} wide>
       <div className="flhd"><b>Mi perfil</b><span className="x" onClick={onClose}>✕</span></div>
+      <div className="profedit">
+        <div className="pe-row">
+          <label className="fl-l">Usuario</label>
+          <input className="fl-in" value={pname} onChange={(e) => setPname(e.target.value)} placeholder="tu usuario" />
+        </div>
+        <div className="pe-row">
+          <label className="fl-l">País</label>
+          <span className="pe-cty">
+            {pcountry && <img className="rkflag" src={flagUrl(pcountry)} alt="" />}
+            <select className="fl-in" value={pcountry} onChange={(e) => setPcountry(e.target.value)}>
+              <option value="">—</option>
+              {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+            </select>
+          </span>
+        </div>
+        <button className="coral sm" onClick={saveProfile}>{psaved ? "✓ Guardado" : "Guardar perfil"}</button>
+      </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         <div className="statbox"><div className="sl">Tu puesto</div><div className="sv">#{myRow ? myRow.rank : "-"}</div></div>
         <div className="statbox"><div className="sl">Tus puntos</div><div className="sv">{myPts}</div></div>
@@ -167,7 +193,7 @@ function ProfileModal({ onClose }) {
       {!rank?.ranking.length && <div className="note">Aún no hay jugadores.</div>}
       {rank?.ranking.map((x) => (
         <div className={"rkrow" + (x.me ? " me" : "")} key={x.id}>
-          <span className="rkn">{x.rank}</span><span>{x.name}</span><span className="rkp">{x.points} pts</span>
+          <span className="rkn">{x.rank}</span>{x.country && <img className="rkflag" src={flagUrl(x.country)} alt="" />}<span>{x.name}</span><span className="rkp">{x.points} pts</span>
         </div>
       ))}
     </Modal>

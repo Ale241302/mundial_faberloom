@@ -257,7 +257,7 @@ def ranking(request):
     eng = build_engine()
     rows = []
     for u in User.objects.filter(role=User.Role.USER):
-        rows.append({"id": u.id, "name": u.name or u.email,
+        rows.append({"id": u.id, "name": u.name or u.email, "country": u.country,
                      "points": eng.score_user(_user_pred_map(u))})
     rows.sort(key=lambda x: x["points"], reverse=True)
     for k, row in enumerate(rows):

@@ -1,3 +1,4 @@
+import requests
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -26,6 +27,21 @@ def client_ip(request):
         return xff.split(",")[0].strip()[:45]
     return (request.META.get("REMOTE_ADDR") or "")[:45]
 
+
+def country_from_ip(ip):
+    """Mejor esfuerzo: país ISO-2 desde la IP (para la bandera). Si falla, ''."""
+    if not ip or ip.startswith(("10.", "127.", "192.168.", "172.16.", "172.17.", "172.18.")):
+        return ""
+    try:
+        r = requests.get(f"https://ipapi.co/{ip}/country/", timeout=2.5,
+                         headers={"User-Agent": "FaberLoom"})
+        code = (r.text or "").strip().lower()
+        if r.status_code == 200 and len(code) == 2 and code.isalpha():
+            return code
+    except Exception:
+        pass
+    return ""
+
 User = get_user_model()
 
 
@@ -42,7 +58,8 @@ def register(request):
     user = ser.save()
     user.signup_ip = client_ip(request)
     user.source = request.data.get("source") or "simulador"
-    user.save(update_fields=["signup_ip", "source"])
+    user.country = (request.data.get("country") or country_from_ip(user.signup_ip) or "")[:2].lower()
+    user.save(update_fields=["signup_ip", "source", "country"])
     try:
         send_welcome_email(user)
     except Exception:
@@ -144,8 +161,10 @@ def waitlist(request):
     user = User.objects.filter(email=email).first()
     existed = bool(user)
     if not user:
+        ip = client_ip(request)
         user = User(email=email, lang=lang, source="landing",
-                    marketing_consent=True, signup_ip=client_ip(request))
+                    marketing_consent=True, signup_ip=ip,
+                    country=country_from_ip(ip))
         user.set_unusable_password()
         user.save()
     else:
