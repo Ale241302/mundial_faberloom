@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Flag } from "./ui.jsx";
 import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
@@ -33,6 +34,11 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
   // En columnas (desktop) la card es idéntica a octavos: sin línea de etapa/fecha.
   const label = column ? "" : (r === 0 ? ROUND_LABELS[lang][0] : ROUND_LABELS[lang][r]);
+
+  const showPop = (e) => {
+    const b = e.currentTarget.getBoundingClientRect();
+    setPop({ x: b.left + b.width / 2, top: b.top, bottom: b.bottom });
+  };
 
   const CSide = ({ team }) => {
     if (!team) return <div className="cmps" style={{ opacity: 0.4 }}>·</div>;
@@ -78,8 +84,8 @@ export default function MatchCard({ r, i, m, compact, column }) {
       whileHover={isPlayed ? {} : { y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (isPlayed ? " played" : "")}
-      style={{ position: "relative" }}
-      onMouseEnter={(e) => { const b = e.currentTarget.getBoundingClientRect(); setPop({ x: b.left + b.width / 2, y: b.top }); }}
+      onMouseEnter={known ? showPop : undefined}
+      onMouseMove={known && pop ? showPop : undefined}
       onMouseLeave={() => setPop(null)}
     >
       {known && pop && <MatchPop a={m.a} b={m.b} pa={pa} res={res} engine={engine} pos={pop} />}
@@ -148,8 +154,15 @@ function MatchPop({ a, b, pa, res, engine, pos }) {
     const mn = parseInt(minute, 10) || 0;
     if (!isNaN(sa) && !isNaN(sb)) ip = engine.inPlay(pa, sa, sb, mn, "live");
   }
-  return (
-    <div className="predpop" style={{ position: "fixed", left: pos.x, top: pos.y - 8, transform: "translate(-50%,-100%)", zIndex: 60, pointerEvents: "none" }}>
+  // colocar arriba de la card; si no cabe (card muy arriba), colocar abajo
+  const above = pos.top > 230;
+  const style = {
+    position: "fixed", left: pos.x, zIndex: 9999, pointerEvents: "none",
+    top: above ? pos.top - 8 : pos.bottom + 8,
+    transform: above ? "translate(-50%,-100%)" : "translate(-50%,0)",
+  };
+  return createPortal(
+    <div className="predpop" style={style}>
       <div className="pp-h">Pronóstico · pre-partido</div>
       <div className="pp-row"><Flag team={a} /><span className="pp-nm">{a}</span><span className="pp-pc">{pct(pa)}%</span></div>
       <div className="pp-bar"><i className="a" style={{ width: pct(pa) + "%" }} /><i className="b" style={{ width: pct(1 - pa) + "%" }} /></div>
@@ -173,7 +186,8 @@ function MatchPop({ a, b, pa, res, engine, pos }) {
           <div className="pp-suc">Éxito (no perder): {a} {pct(ip.pA + ip.pD)}% · {b} {pct(ip.pB + ip.pD)}%</div>
         </>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
