@@ -93,7 +93,7 @@ function Stat({ label, value }) {
   return <div className="lp-stat"><span>{label}</span><b>{value}</b></div>;
 }
 
-function minNum(m) { const n = parseInt(String(m == null ? "" : m).replace(/[^0-9]/g, ""), 10); return Number.isNaN(n) ? 0 : n; }
+function minNum(m) { const g = String(m == null ? "" : m).match(/\d+/); const n = g ? parseInt(g[0], 10) : 0; return Number.isNaN(n) ? 0 : Math.min(n, 90); }
 
 function ProbBar({ home, away, sa, sb, minute, status, engine, lang, txt }) {
   if (!home || !away || !engine || status === "finished") return null;
