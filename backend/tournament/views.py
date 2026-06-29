@@ -53,6 +53,61 @@ def _results_payload():
     return results
 
 
+def _slot_overlay(panel):
+    """{(r,i): {winner, leader, score}} desde el panel EN VIVO (FIFA), para puntos
+    provisionales. 'leader' = quien va ganando ahora (no avanza el cuadro)."""
+    out = {}
+
+    def add(m, from_field):
+        if not m:
+            return
+        r, i = m.get("round"), m.get("index")
+        if r is None or i is None:
+            return
+        score = m.get("score") or ""
+        if "-" not in score:
+            return
+        winner = m.get("winner") or ""
+        leader = ""
+        if from_field:
+            leader = m.get("current_leader") or ""
+        else:
+            try:
+                h, a = [int(x) for x in score.split("-")[:2]]
+                hn = m.get("home") if isinstance(m.get("home"), str) else (m.get("home") or {}).get("name")
+                an = m.get("away") if isinstance(m.get("away"), str) else (m.get("away") or {}).get("name")
+                leader = hn if h > a else (an if a > h else "")
+            except (ValueError, TypeError):
+                leader = ""
+        out[(r, i)] = {"winner": winner, "leader": leader, "score": score}
+
+    for q in (panel.get("queue") or []):
+        if q.get("status") in ("live", "finished"):
+            add(q, False)
+    add(panel.get("last_result"), True)
+    add(panel.get("in_play"), True)   # autoritativo: pisa al compacto
+    return out
+
+
+def _score_engine():
+    """Motor con los marcadores EN VIVO superpuestos (solo afecta puntos, no el
+    cuadro: el ganador en vivo va en 'live_leader', no en 'winner')."""
+    from .fifa import get_live_panel
+    eng = build_engine()
+    try:
+        for (r, i), v in _slot_overlay(get_live_panel()).items():
+            cur = eng.results.setdefault(r, {}).setdefault(i, {"winner": "", "score": ""})
+            if v["winner"]:
+                cur["winner"] = v["winner"]
+            elif v["leader"]:
+                cur["live_leader"] = v["leader"]
+            if v["score"]:
+                cur["score"] = v["score"]
+    except Exception:
+        pass
+    return eng
+
+
 def _closed_payload():
     closed = {}
     for cm in ClosedMatch.objects.all():
@@ -82,7 +137,7 @@ def _live_state_payload(request):
     """Estado liviano para polling: evita recalcular Monte Carlo completo."""
     from .fifa import get_live_panel
 
-    eng = build_engine()
+    eng = _score_engine()
     state = TournamentState.get()
     ai_picks, prob_f = eng.freeze("fav")
     data = {
@@ -118,7 +173,8 @@ def bootstrap(request):
 
     ai_picks, prob_f = eng.freeze("fav")
     reach = eng.simulate(int(request.query_params.get("n", 1500)))
-    ai_points = eng.score_ai()
+    seng = _score_engine()
+    ai_points = seng.score_ai()
 
     data = {
         "teams": teams,
@@ -140,7 +196,7 @@ def bootstrap(request):
         data["my_predictions"] = PredictionSerializer(
             Prediction.objects.filter(user=request.user), many=True
         ).data
-        data["my_points"] = eng.score_user(_user_pred_map(request.user))
+        data["my_points"] = seng.score_user(_user_pred_map(request.user))
 
     return Response(data)
 
@@ -254,7 +310,7 @@ def my_predictions(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def ranking(request):
-    eng = build_engine()
+    eng = _score_engine()
     rows = []
     for u in User.objects.filter(role=User.Role.USER):
         rows.append({"id": u.id, "name": u.name or u.email, "country": u.country,

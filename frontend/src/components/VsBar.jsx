@@ -7,7 +7,7 @@ export default function VsBar() {
   const l = L(lang);
   if (!user) return null;
 
-  const me = engine.scoreUser(predictions);
+  const me = (boot.my_points != null) ? boot.my_points : engine.scoreUser(predictions);
   const ai = boot.ai_points || 0;
   const d = Math.abs(me - ai);
   const msg = me > ai ? l.vswin.replace("{d}", d) : me < ai ? l.vslose.replace("{d}", d) : l.vstie;

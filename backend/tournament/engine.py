@@ -144,8 +144,9 @@ class Engine:
                 up = ups.get(i)
                 if not up:
                     continue
-                if up.get("pick") and up["pick"] == real.get("winner"):
-                    pts += 3                       # acertar el ganador del cruce
+                target = real.get("winner") or real.get("live_leader")
+                if up.get("pick") and target and up["pick"] == target:
+                    pts += 3                       # ganador (o líder provisional en vivo)
                 rs = real.get("score") or ""
                 if rs and "-" in rs and up.get("goal_a") is not None and up.get("goal_b") is not None:
                     try:
@@ -163,7 +164,8 @@ class Engine:
         pts = 0
         for r in range(5):
             for i, real in self.results.get(r, {}).items():
-                if ai_picks.get(r, {}).get(i) == real.get("winner"):
+                target = real.get("winner") or real.get("live_leader")
+                if target and ai_picks.get(r, {}).get(i) == target:
                     pts += 3
         return pts
 
