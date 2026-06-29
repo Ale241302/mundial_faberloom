@@ -5,6 +5,17 @@ import { useApp } from "../lib/store.jsx";
 
 const ND = "[N/D]";
 
+// Convierte la fecha de la FIFA (UTC) a un Date correcto. Si la cadena no trae
+// indicador de zona (Z o +hh:mm), se asume UTC para que el navegador la muestre
+// en la hora local de CADA usuario (sin depender de la IP).
+function toDate(value) {
+  if (!value) return null;
+  let v = String(value).trim().replace(" ", "T");
+  if (/T\d{2}:\d{2}/.test(v) && !/(z|[+-]\d{2}:?\d{2})$/i.test(v)) v += "Z";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function fmtMinute(value) {
   const s = String(value || "").trim();
   if (!s) return "";
@@ -18,21 +29,20 @@ function fmtPair(pair, suffix = "") {
 }
 
 function fmtDate(value, lang) {
-  if (!value) return ND;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return ND;
+  const d = toDate(value);
+  if (!d) return ND;
   return d.toLocaleString(lang, { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtTime(value, lang) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
+  const d = toDate(value);
+  if (!d) return "";
   return d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
 }
 
 function dayLabel(value, lang) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
+  const d = toDate(value);
+  if (!d) return "";
   const t = new Date(); const tm = new Date(); tm.setDate(t.getDate() + 1);
   const L = ({ es: ["Hoy", "Mañana"], en: ["Today", "Tomorrow"], fr: ["Aujourd'hui", "Demain"], pt: ["Hoje", "Amanhã"] })[lang] || ["Hoy", "Mañana"];
   if (d.toDateString() === t.toDateString()) return L[0];
@@ -48,9 +58,8 @@ function fmtUpdated(value, lang) {
 }
 
 function countdown(value, lang) {
-  if (!value) return ND;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return ND;
+  const d = toDate(value);
+  if (!d) return ND;
   const diff = d.getTime() - Date.now();
   if (diff <= 0) return lang === "en" ? "now" : lang === "fr" ? "maintenant" : "ahora";
   const mins = Math.floor(diff / 60000);
