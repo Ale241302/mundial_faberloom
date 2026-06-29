@@ -89,6 +89,55 @@ def _slot_overlay(panel):
     return out
 
 
+def _live_results(panel):
+    """{(r,i): {winner, score, status, minute}} de partidos en vivo/finalizados del
+    panel FIFA. En vivo => winner vacío (no avanza el cuadro, pero bloquea el pronóstico)."""
+    out = {}
+
+    def add(m):
+        if not m:
+            return
+        r, i = m.get("round"), m.get("index")
+        if r is None or i is None:
+            return
+        st = m.get("status")
+        if st not in ("live", "finished"):
+            return
+        out[(r, i)] = {
+            "winner": m.get("winner") or "",
+            "score": m.get("score") or "",
+            "status": st,
+            "minute": m.get("minute") or "",
+        }
+
+    for q in (panel.get("queue") or []):
+        add(q)
+    add(panel.get("last_result"))
+    add(panel.get("in_play"))
+    return out
+
+
+def _started_slots(panel):
+    return set(_live_results(panel).keys())
+
+
+def _merge_live_results(results, panel):
+    """Mete los partidos en vivo/finalizados (FIFA) en el dict de results del payload,
+    para que el front los trate como 'jugados' y bloquee el pronóstico."""
+    try:
+        for (r, i), v in _live_results(panel).items():
+            cur = results.setdefault(str(r), {})
+            prev = cur.get(str(i)) or {}
+            # no pisar un resultado FINAL ya guardado en BD (con ganador) por uno en vivo
+            if prev.get("winner") and not v["winner"]:
+                continue
+            cur[str(i)] = {"winner": v["winner"], "score": v["score"],
+                           "status": v["status"], "minute": v["minute"]}
+    except Exception:
+        pass
+    return results
+
+
 def _score_engine():
     """Motor con los marcadores EN VIVO superpuestos (solo afecta puntos, no el
     cuadro: el ganador en vivo va en 'live_leader', no en 'winner')."""
@@ -142,7 +191,7 @@ def _live_state_payload(request):
     ai_picks, prob_f = eng.freeze("fav")
     data = {
         "state": _state_payload(state),
-        "results": _results_payload(),
+        "results": _merge_live_results(_results_payload(), get_live_panel()),
         "overrides": _overrides_payload(),
         "closed_matches": _closed_payload(),
         "ai_picks": _int_keyed(ai_picks),
@@ -167,7 +216,8 @@ def bootstrap(request):
     teams = {t.name: TeamSerializer(t).data for t in Team.objects.all()}
     fixtures = FixtureSerializer(Fixture.objects.all(), many=True).data
     market = {str(m.match_no): MarketSerializer(m).data for m in MarketOdds.objects.all()}
-    results = _results_payload()
+    from .fifa import get_live_panel as _glp
+    results = _merge_live_results(_results_payload(), _glp())
     closed = _closed_payload()
     overrides = _overrides_payload()
 
@@ -266,6 +316,14 @@ def save_prediction(request):
     if ClosedMatch.objects.filter(round=r, index=i).exists():
         return Response({"detail": "Ese partido está cerrado para pronósticos."},
                         status=status.HTTP_400_BAD_REQUEST)
+    # ya empezó en vivo (o terminó) según la FIFA => bloqueado para que nadie ajuste
+    try:
+        from .fifa import get_live_panel
+        if (r, i) in _started_slots(get_live_panel()):
+            return Response({"detail": "El partido ya empezó; el pronóstico está bloqueado."},
+                            status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        pass
     pred, _ = Prediction.objects.update_or_create(
         user=request.user, round=r, index=i,
         defaults={
