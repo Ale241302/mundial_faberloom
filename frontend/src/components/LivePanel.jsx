@@ -74,17 +74,17 @@ function aiLine(match, lang, txt) {
   const p = match?.probabilities;
   if (!p?.favorite || p.favorite_prob == null) return txt.aiMissing;
   if (match.status === "scheduled") {
-    return txt.aiNext.replace("{p}", p.favorite_prob).replace("{team}", p.favorite);
+    return txt.aiNext.replace("{p}", p.favorite_prob).replace("{team}", tn(p.favorite, lang));
   }
   const score = scoreFor(match, ND);
-  return txt.aiLive.replace("{p}", p.favorite_prob).replace("{team}", p.favorite).replace("{score}", score);
+  return txt.aiLive.replace("{p}", p.favorite_prob).replace("{team}", tn(p.favorite, lang)).replace("{score}", score);
 }
 
-function TeamBlock({ side, align }) {
+function TeamBlock({ side, align, lang }) {
   return (
     <div className={`lp-team ${align || ""}`}>
       <Flag team={side?.name} big />
-      <span>{side?.name || ND}</span>
+      <span>{side?.name ? tn(side.name, lang) : ND}</span>
     </div>
   );
 }
@@ -125,7 +125,7 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
     if (Number.isNaN(hs)) hs = null; if (Number.isNaN(as)) as = null;
   }
   const myPick = myp.pick || "";
-  const aiTxt = (q.fav && q.fav_prob != null) ? (txt.aiNext || "").replace("{p}", q.fav_prob).replace("{team}", q.fav) : "";
+  const aiTxt = (q.fav && q.fav_prob != null) ? (txt.aiNext || "").replace("{p}", q.fav_prob).replace("{team}", tn(q.fav, lang)) : "";
   const stat = q.status === "live" ? `${txt.liveBadge || "EN VIVO"} ${q.minute || ""}` : (q.status === "finished" ? "FINAL" : fmtTime(q.date, lang));
   return (
     <div className={"lp-card" + (q.status === "live" ? " is-live" : "")}>
@@ -137,7 +137,7 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
       {aiTxt && <div className="lp-cai">{aiTxt}</div>}
       {has && (
         <div className="lp-crow">
-          <span className="lp-cl">{(txt && txt.title) ? "Tu pronóstico" : "Tu pronóstico"}</span>
+          <span className="lp-cl">{txt.yourPred}</span>
           {can ? (
             <span className="lp-predin">
               <input type="number" min="0" inputMode="numeric" value={myp.goal_a != null ? myp.goal_a : ""}
@@ -148,7 +148,7 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
             </span>
           ) : (<b>{myPick ? tn(myPick, lang) : "—"}</b>)}
           {myPick && <b className="lp-predwin">→ {tn(myPick, lang)}</b>}
-          <span className="lp-cl lp-csep">· Real</span>
+          <span className="lp-cl lp-csep">· {txt.real}</span>
           <span className="lp-realbox">
             <input disabled value={hs != null ? hs : ""} placeholder="–" />
             <em>–</em>
@@ -220,18 +220,18 @@ export default function LivePanel() {
       </div>
 
       <div className="lp-main">
-        <TeamBlock side={main.home} align="left" />
+        <TeamBlock side={main.home} align="left" lang={lang} />
         <div className="lp-scorebox">
           <div className="lp-score">{scoreFor(main, "vs")}</div>
           <div className="lp-ai">{aiLine(main, lang, txt)}</div>
           {impact && <div className="lp-impact">{impact}</div>}
         </div>
-        <TeamBlock side={main.away} align="right" />
+        <TeamBlock side={main.away} align="right" lang={lang} />
       </div>
 
       {main.round != null && main.index != null && (
         <div className="lp-pred">
-          <span>Tu pronóstico</span>
+          <span>{txt.yourPred}</span>
           {canPredictMain ? (
             <span className="lp-predin">
               <input type="number" min="0" inputMode="numeric" aria-label={main.home?.name}
@@ -251,14 +251,14 @@ export default function LivePanel() {
 
       {main.round != null && main.index != null && (
         <div className="lp-real">
-          <span>Resultado real</span>
+          <span>{txt.realResult}</span>
           <span className="lp-realbox">
             <input disabled value={main.home?.score != null ? main.home.score : ""} placeholder="–" />
             <em>–</em>
             <input disabled value={main.away?.score != null ? main.away.score : ""} placeholder="–" />
           </span>
           <em className={"lp-realtag" + (main.status === "live" ? " live" : "")}>
-            {main.status === "live" ? `EN VIVO ${fmtMinute(main.minute)}` : (main.status === "finished" ? "FINAL" : "aún no empieza")}
+            {main.status === "live" ? `${txt.playing} ${fmtMinute(main.minute)}` : (main.status === "finished" ? txt.finalLbl : txt.notStarted)}
           </em>
         </div>
       )}
@@ -269,14 +269,14 @@ export default function LivePanel() {
       {!hasLive && last && last.id !== main.id && (
         <div className="lp-last">
           <span>{txt.lastResult}</span>
-          <b>{last.home?.name || ND} {scoreFor(last, ND)} {last.away?.name || ND}</b>
+          <b>{last.home?.name ? tn(last.home.name, lang) : ND} {scoreFor(last, ND)} {last.away?.name ? tn(last.away.name, lang) : ND}</b>
           <small>{aiLine(last, lang, txt)}</small>
         </div>
       )}
 
       {dayList.length > 0 && (
         <div className="lp-queue">
-          <div className="lp-qh">Más partidos · <b className="lp-qday">{dayHdr}</b></div>
+          <div className="lp-qh">{txt.more} · <b className="lp-qday">{dayHdr}</b></div>
           {dayList.map((q, k) => (
             <LpCard key={k} q={q} lang={lang} txt={txt} predictions={predictions} mc={mc} engine={engine} boot={boot} />
           ))}

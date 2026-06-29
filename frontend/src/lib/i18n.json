@@ -71,7 +71,8 @@
    "pass": "Precisión pases"
   },
   "whatis": "¿Qué es FaberLoom?",
-  "whatistxt": "FaberLoom hace asistentes de IA que trabajan de verdad por vos. Este juego —el modelo, los datos, todo— lo hizo uno solo. Pronto vas a poder armar el tuyo."
+  "whatistxt": "FaberLoom hace asistentes de IA que trabajan de verdad por vos. Este juego —el modelo, los datos, todo— lo hizo uno solo. Pronto vas a poder armar el tuyo.",
+  "team": "Selección"
  },
  "en": {
   "live": "LIVE",
@@ -145,7 +146,8 @@
    "pass": "Pass accuracy"
   },
   "whatis": "What is FaberLoom?",
-  "whatistxt": "FaberLoom builds AI assistants that actually do the work for you. This game — the model, the data, all of it — was built by one. Soon you'll build your own."
+  "whatistxt": "FaberLoom builds AI assistants that actually do the work for you. This game — the model, the data, all of it — was built by one. Soon you'll build your own.",
+  "team": "Team"
  },
  "fr": {
   "live": "EN DIRECT",
@@ -219,7 +221,8 @@
    "pass": "Précision passes"
   },
   "whatis": "C'est quoi FaberLoom ?",
-  "whatistxt": "FaberLoom crée des assistants IA qui travaillent vraiment pour toi. Ce jeu — le modèle, les données, tout — a été fait par un seul. Bientôt tu créeras le tien."
+  "whatistxt": "FaberLoom crée des assistants IA qui travaillent vraiment pour toi. Ce jeu — le modèle, les données, tout — a été fait par un seul. Bientôt tu créeras le tien.",
+  "team": "Équipe"
  },
  "pt": {
   "live": "AO VIVO",
@@ -293,6 +296,7 @@
    "pass": "Precisão de passes"
   },
   "whatis": "O que é a FaberLoom?",
-  "whatistxt": "A FaberLoom cria assistentes de IA que trabalham de verdade por você. Este jogo — o modelo, os dados, tudo — foi feito por um só. Em breve você poderá montar o seu."
+  "whatistxt": "A FaberLoom cria assistentes de IA que trabalham de verdade por você. Este jogo — o modelo, os dados, tudo — foi feito por um só. Em breve você poderá montar o seu.",
+  "team": "Seleção"
  }
 }

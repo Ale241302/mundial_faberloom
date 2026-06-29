@@ -69,7 +69,7 @@ export default function Simulator() {
       <div className="points">
         <b>{lx.ptitle}.</b> {lx.pdesc}
         <div className="pr">
-          <span>{lx.prounds}: 16avos 1 · 8vos 2 · 4tos 3 · Semis 5 · Final 8</span>
+          <span>{lx.prounds}: {lx.proundsline}</span>
           <span>{lx.psurp}</span>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function Simulator() {
       </div>
 
       <div className="foot">
-        Datos: swarm <b>Kimi</b> · motor Monte Carlo por Elo, no predicción · la "IA" es este mismo motor. mundial.faberloom.ai
+        {lx.foot} faberloom.ai
       </div>
     </div>
   );

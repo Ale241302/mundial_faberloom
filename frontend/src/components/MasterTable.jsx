@@ -47,7 +47,7 @@ export default function MasterTable({ query, onOpenTeam }) {
     <table className="tbl">
       <thead>
         <tr>
-          <th>{l.group}</th><th>{l.group}</th><th>xG</th><th>GF/GC</th>
+          <th>{l.team}</th><th>{l.group}</th><th>xG</th><th>GF/GC</th>
           <th>{l.mktadv}</th><th>{l.modadv}</th><th></th>
         </tr>
       </thead>

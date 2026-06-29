@@ -15,6 +15,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const { lang, engine, boot, mode, predictions, isAdmin, mc, setHoverPop } = useApp();
   const l = L(lang);
   const lx = LX(lang);
+  const lp = (lx && lx.livePanel) || {};
   m = m || {};
   const known = m.a && m.b;
   const pa = known ? engine.pWin(m.a, m.b) : 0.5;
@@ -45,8 +46,8 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
   // esquina superior izquierda
   const corner = live
-    ? <span className="livchip"><i className="ld" />EN VIVO {fmtMin(res.minute)}</span>
-    : (finished ? <span className="finchip">FINAL</span> : (label ? <span>{label}</span> : null));
+    ? <span className="livchip"><i className="ld" />{lp.playing} {fmtMin(res.minute)}</span>
+    : (finished ? <span className="finchip">{lp.finalLbl}</span> : (label ? <span>{label}</span> : null));
 
   const showPop = (e) => {
     if (!known) return;
@@ -150,7 +151,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
       {/* pronóstico del usuario (solo lectura) cuando el partido ya empezó */}
       {isPlayed && (predScore || up) && (
         <div className="predread">
-          <span className="prk">Tu pronóstico</span>
+          <span className="prk">{lp.yourPred}</span>
           <span className="prv">{up || "—"}{predScore ? " · " + predScore : ""}</span>
         </div>
       )}
@@ -158,7 +159,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
       {/* resultado real, debajo del pronóstico */}
       {res && res.score && (
         <div className={"realres" + (live ? " livenow" : "")}>
-          <span className="rl">{live ? "Resultado en vivo" : "Resultado real"}</span>
+          <span className="rl">{live ? lp.realLive : lp.realResult}</span>
           <span className="rv">{res.score}</span>
         </div>
       )}
@@ -170,7 +171,8 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
 // Popover único global: se renderiza UNA sola vez (HoverPopLayer en Simulator).
 export function HoverPopLayer() {
-  const { hoverPop, engine } = useApp();
+  const { hoverPop, engine, lang } = useApp();
+  const txt = (LX(lang) && LX(lang).livePanel) || {};
   if (!hoverPop) return null;
   const { a, b, pa, res, pos } = hoverPop;
   const pct = (x) => Math.round(x * 100);
@@ -189,10 +191,10 @@ export function HoverPopLayer() {
   };
   return createPortal(
     <div className="predpop" style={style}>
-      <div className="pp-h">Pronóstico · pre-partido</div>
-      <div className="pp-row"><Flag team={a} /><span className="pp-nm">{a}</span><span className="pp-pc">{pct(pa)}%</span></div>
+      <div className="pp-h">{txt.prematch}</div>
+      <div className="pp-row"><Flag team={a} /><span className="pp-nm">{tn(a, lang)}</span><span className="pp-pc">{pct(pa)}%</span></div>
       <div className="pp-bar"><i className="a" style={{ width: pct(pa) + "%" }} /><i className="b" style={{ width: pct(1 - pa) + "%" }} /></div>
-      <div className="pp-row"><Flag team={b} /><span className="pp-nm">{b}</span><span className="pp-pc">{pct(1 - pa)}%</span></div>
+      <div className="pp-row"><Flag team={b} /><span className="pp-nm">{tn(b, lang)}</span><span className="pp-pc">{pct(1 - pa)}%</span></div>
 
       {ip && (
         <>
