@@ -5,6 +5,12 @@ import { Flag } from "./ui.jsx";
 import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
+const fmtMin = (mn) => {
+  const s = String(mn || "").trim();
+  if (!s) return "";
+  return /['′]$/.test(s) ? s : s + "'";
+};
+
 export default function MatchCard({ r, i, m, compact, column }) {
   const { lang, engine, boot, mode, predictions, isAdmin, mc, setHoverPop } = useApp();
   const l = L(lang);
@@ -14,6 +20,8 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const pa = known ? engine.pWin(m.a, m.b) : 0.5;
   const lk = engine.lock(r, i);
   const res = engine.resultOf(r, i);
+  const live = !!(res && res.status === "live");
+  const finished = !!(res && res.status === "finished");
   const isPlayed = engine.played(r, i);          // en juego o finalizado
   const up = predictions[r]?.[i]?.pick;
   const g = predictions[r]?.[i] || {};
@@ -34,6 +42,11 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
   // En columnas (desktop) la card es idéntica a octavos: sin línea de etapa/fecha.
   const label = column ? "" : (r === 0 ? ROUND_LABELS[lang][0] : ROUND_LABELS[lang][r]);
+
+  // esquina superior izquierda
+  const corner = live
+    ? <span className="livchip"><i className="ld" />EN VIVO {fmtMin(res.minute)}</span>
+    : (finished ? <span className="finchip">FINAL</span> : (label ? <span>{label}</span> : null));
 
   const showPop = (e) => {
     if (!known) return;
@@ -85,14 +98,14 @@ export default function MatchCard({ r, i, m, compact, column }) {
       layout
       whileHover={isPlayed ? {} : { y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (isPlayed ? " played" : "")}
+      className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (finished ? " played" : "") + (live ? " liveon" : "")}
       onMouseEnter={showPop}
       onMouseMove={showPop}
       onMouseLeave={hidePop}
     >
-      {(label || predScore) && (
+      {(corner || predScore) && (
         <div className="rnd">
-          <span>{label}</span>
+          {corner || <span />}
           {predScore && <span style={{ color: "var(--coral)" }}>{predScore}</span>}
         </div>
       )}
@@ -132,9 +145,18 @@ export default function MatchCard({ r, i, m, compact, column }) {
         </>
       )}
 
+      {/* pronóstico del usuario (solo lectura) cuando el partido ya empezó */}
+      {isPlayed && (predScore || up) && (
+        <div className="predread">
+          <span className="prk">Tu pronóstico</span>
+          <span className="prv">{up || "—"}{predScore ? " · " + predScore : ""}</span>
+        </div>
+      )}
+
+      {/* resultado real, debajo del pronóstico */}
       {res && res.score && (
-        <div className={"realres" + (res.status === "live" ? " livenow" : "")}>
-          <span className="rl">{res.status === "live" ? ("EN JUEGO" + (res.minute ? " " + res.minute : "")) : "Resultado"}</span>
+        <div className={"realres" + (live ? " livenow" : "")}>
+          <span className="rl">{live ? "Resultado en vivo" : "Resultado real"}</span>
           <span className="rv">{res.score}</span>
         </div>
       )}
@@ -144,7 +166,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
   );
 }
 
-// Popover único global: se renderiza UNA sola vez (ver HoverPopLayer en Simulator).
+// Popover único global: se renderiza UNA sola vez (HoverPopLayer en Simulator).
 export function HoverPopLayer() {
   const { hoverPop, engine } = useApp();
   if (!hoverPop) return null;
