@@ -359,3 +359,8 @@ select.fl-in{cursor:pointer}
 .lp-statstg .chev{transition:transform .2s ease;color:inherit}
 .lp-statsec.open .lp-statstg .chev{transform:rotate(180deg)}
 .lp-statsec.open .lp-statstg{color:var(--coral)}
+
+/* fila propia fijada arriba cuando no entras en la lista visible */
+.rankp-row.pinned{position:sticky;top:0;z-index:2;background:rgba(201,100,66,.12);
+  border:1px solid var(--coral);border-radius:8px;box-shadow:0 2px 6px rgba(31,30,28,.08)}
+.rankp-sep{height:1px;background:var(--line);margin:4px 6px 6px;flex:none}

@@ -47,6 +47,16 @@ export default function RankingPanel() {
         <div className="note">{t.empty}</div>
       ) : (
         <div className="rankp-list">
+          {showMineExtra && (
+            <>
+              <div className="rankp-row me pinned">
+                <span className="rk">{mine.rank}</span>
+                <span className="nm">{mine.country && <img className="rkflag" src={flagUrl(mine.country)} alt="" />}{mine.name}<em className="ywho">{t.you}</em></span>
+                <span className="pt">{mine.points}<small> {t.pts}</small></span>
+              </div>
+              <div className="rankp-sep" />
+            </>
+          )}
           {top.map((r) => (
             <div key={r.id} className={"rankp-row" + (r.me ? " me" : "")}>
               <span className="rk">{r.rank}</span>
@@ -54,13 +64,6 @@ export default function RankingPanel() {
               <span className="pt">{r.points}<small> {t.pts}</small></span>
             </div>
           ))}
-          {showMineExtra && (
-            <div className="rankp-row me">
-              <span className="rk">{mine.rank}</span>
-              <span className="nm">{mine.country && <img className="rkflag" src={flagUrl(mine.country)} alt="" />}{mine.name}<em className="ywho">{t.you}</em></span>
-              <span className="pt">{mine.points}<small> {t.pts}</small></span>
-            </div>
-          )}
         </div>
       )}
     </div>
