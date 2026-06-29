@@ -13,7 +13,8 @@ function fmtMinute(value) {
 
 function fmtPair(pair, suffix = "") {
   if (!pair || pair.home == null || pair.away == null) return ND;
-  return `${pair.home}${suffix} - ${pair.away}${suffix}`;
+  const mark = pair.estimated ? " ≈" : "";
+  return `${pair.home}${suffix} - ${pair.away}${suffix}${mark}`;
 }
 
 function fmtDate(value, lang) {
@@ -78,18 +79,19 @@ function Stat({ label, value }) {
 
 function StatsGrid({ match, txt }) {
   const s = match?.stats || {};
+  const T = txt.stats || {};
   const cards = s.yellow_cards?.home != null && s.yellow_cards?.away != null
     ? `${txt.yellow} ${fmtPair(s.yellow_cards)}${s.red_cards?.home != null && s.red_cards?.away != null ? ` · ${txt.red} ${fmtPair(s.red_cards)}` : ""}`
     : (s.red_cards?.home != null && s.red_cards?.away != null ? `${txt.red} ${fmtPair(s.red_cards)}` : ND);
   return (
     <div className="lp-stats">
-      <Stat label={txt.stats.possession} value={fmtPair(s.possession, "%")} />
-      <Stat label={txt.stats.shots} value={fmtPair(s.shots)} />
-      <Stat label={txt.stats.sot} value={fmtPair(s.shots_on_target)} />
-      <Stat label={txt.stats.corners} value={fmtPair(s.corners)} />
-      <Stat label={txt.stats.fouls} value={fmtPair(s.fouls)} />
-      <Stat label={txt.stats.cards} value={cards} />
-      <Stat label={txt.stats.xg} value={fmtPair(s.xg)} />
+      <Stat label={T.possession} value={fmtPair(s.possession, "%")} />
+      <Stat label={T.shots} value={fmtPair(s.shots)} />
+      <Stat label={T.sot} value={fmtPair(s.shots_on_target)} />
+      <Stat label={T.corners} value={fmtPair(s.corners)} />
+      <Stat label={T.fouls} value={fmtPair(s.fouls)} />
+      <Stat label={T.cards} value={cards} />
+      <Stat label={T.xg} value={fmtPair(s.xg)} />
     </div>
   );
 }
