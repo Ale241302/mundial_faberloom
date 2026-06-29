@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from emails.service import send_welcome_email, send_password_reset_email, send_waitlist_email
+from emails.service import send_welcome_email, send_password_reset_email, send_waitlist_email, send_ranawalk_email
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
@@ -220,3 +220,33 @@ def activation_complete(request):
     user.is_active = True
     user.save()
     return Response(_auth_payload(user))
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def ranawalk(request):
+    """Pre-registro de interés en RanaWalk (patrocinador). Si el usuario está
+    logueado usa su correo; si no, pide uno. Envía un correo de confirmación."""
+    from .models import RanaWalkLead
+    lang = (request.data.get("lang") or "es")[:5]
+    if request.user.is_authenticated:
+        email = request.user.email
+        u = request.user
+        name = request.user.name or ""
+    else:
+        email = (request.data.get("email") or "").strip().lower()
+        u = None
+        name = ""
+    if not email or "@" not in email:
+        return Response({"detail": "Correo inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    lead, created = RanaWalkLead.objects.get_or_create(
+        email=email, defaults={"user": u, "ip": client_ip(request), "lang": lang})
+    if not created and u and lead.user_id is None:
+        lead.user = u
+        lead.save(update_fields=["user"])
+    try:
+        send_ranawalk_email(email, name, lang)
+    except Exception:
+        pass
+    return Response({"ok": True, "existed": not created})

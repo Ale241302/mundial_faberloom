@@ -133,7 +133,7 @@ class Engine:
     def surprise(p):
         return min(3.0, 0.5 / p) if (p and p < 0.5) else 1.0
 
-    def score_user(self, user_preds):
+    def score_user(self, user_preds, only=None):
         # Por partido: ganador +3 ; cada equipo con goles acertados +2 (independiente).
         # Máx 7 (gana + ambos marcadores). 0 si no acierta nada. Sin escalar por ronda.
         pts = 0
@@ -141,6 +141,8 @@ class Engine:
             res_r = self.results.get(r, {})
             ups = user_preds.get(r, {})
             for i, real in res_r.items():
+                if only is not None and (r, i) not in only:
+                    continue
                 up = ups.get(i)
                 if not up:
                     continue
@@ -159,11 +161,13 @@ class Engine:
                         pass
         return round(pts)
 
-    def score_ai(self):
+    def score_ai(self, only=None):
         ai_picks, _ = self.freeze("fav")
         pts = 0
         for r in range(5):
             for i, real in self.results.get(r, {}).items():
+                if only is not None and (r, i) not in only:
+                    continue
                 target = real.get("winner") or real.get("live_leader")
                 if target and ai_picks.get(r, {}).get(i) == target:
                     pts += 3

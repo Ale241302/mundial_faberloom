@@ -25,6 +25,7 @@ export const API = {
   login: (b) => api.post(`/auth/login/`, b),
   logout: () => api.post(`/auth/logout/`),
   me: () => api.get(`/auth/me/`),
+  ranawalk: (b) => api.post(`/auth/ranawalk/`, b),
   mePatch: (b) => api.patch(`/auth/me/`, b),
   resetRequest: (email) => api.post(`/auth/password/reset/`, { email }),
   resetValidate: (token) => api.get(`/auth/password/reset/validate/?token=${encodeURIComponent(token)}`),

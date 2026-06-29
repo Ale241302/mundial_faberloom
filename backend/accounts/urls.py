@@ -12,4 +12,5 @@ urlpatterns = [
     path("waitlist/", views.waitlist),
     path("activation/validate/", views.activation_validate),
     path("activation/complete/", views.activation_complete),
+    path("ranawalk/", views.ranawalk),
 ]

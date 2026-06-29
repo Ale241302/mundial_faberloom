@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.conf import settings
 from django.db import models
 
 
@@ -57,3 +58,19 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ["-date_joined"]
+
+
+class RanaWalkLead(models.Model):
+    """Pre-registro de interés en RanaWalk (patrocinador del partido en vivo)."""
+    email = models.EmailField(unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                             on_delete=models.SET_NULL, related_name="ranawalk_leads")
+    ip = models.CharField(max_length=45, blank=True)
+    lang = models.CharField(max_length=5, default="es")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.email

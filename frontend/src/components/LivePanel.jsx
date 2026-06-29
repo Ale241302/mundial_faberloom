@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Flag } from "./ui.jsx";
 import { LX, tn } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
+import RanaSponsor from "./RanaSponsor.jsx";
 
 const ND = "[N/D]";
 
@@ -269,6 +270,8 @@ export default function LivePanel() {
         </div>
         <div className="lp-upd">{txt.updated}: {fmtUpdated(panel.last_updated, lang)}</div>
       </div>
+
+      {hasLive && <RanaSponsor lang={lang} />}
 
       <div className="lp-main">
         <TeamBlock side={main.home} align="left" lang={lang} />

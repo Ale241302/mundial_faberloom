@@ -136,3 +136,61 @@ def send_password_reset_email(user, token):
             "expires_label": f"{hours} horas" if hours else "2 horas",
         },
     )
+
+RANAWALK_STR = {
+    "es": {
+        "subject": "Estás pre-registrado en RanaWalk",
+        "preheader": "Tu lugar para el lanzamiento de RanaWalk está reservado.",
+        "tagline": "Tu próxima caminata, recompensada.",
+        "lead": "¡Gracias por sumarte! Quedaste <strong>pre-registrado</strong> para el lanzamiento "
+                "de RanaWalk. Los que entran ahora son los primeros en probarlo — y arrancan con un beneficio exclusivo.",
+        "perk_label": "Beneficio de lanzamiento",
+        "perk": "Cupón de descuento reservado para vos al estrenar la app.",
+        "next": "Te avisaremos por este correo apenas RanaWalk esté disponible. No tenés que hacer nada más.",
+        "from_note": "Recibís este correo porque te pre-registraste desde el Simulador Mundial 2026 de FaberLoom, patrocinado por RanaWalk.",
+        "ps": "Si no fuiste vos, podés ignorar este correo.",
+    },
+    "en": {
+        "subject": "You're pre-registered for RanaWalk",
+        "preheader": "Your spot for the RanaWalk launch is reserved.",
+        "tagline": "Your next walk, rewarded.",
+        "lead": "Thanks for joining! You're now <strong>pre-registered</strong> for the RanaWalk launch. "
+                "Those who join now are the first to try it — and start with an exclusive perk.",
+        "perk_label": "Launch perk",
+        "perk": "A discount coupon reserved for you when the app goes live.",
+        "next": "We'll email you the moment RanaWalk is available. Nothing else to do.",
+        "from_note": "You're getting this because you pre-registered from FaberLoom's World Cup 2026 Simulator, sponsored by RanaWalk.",
+        "ps": "If this wasn't you, you can ignore this email.",
+    },
+    "fr": {
+        "subject": "Tu es pré-inscrit à RanaWalk",
+        "preheader": "Ta place pour le lancement de RanaWalk est réservée.",
+        "tagline": "Ta prochaine marche, récompensée.",
+        "lead": "Merci de t'être inscrit ! Tu es maintenant <strong>pré-inscrit</strong> au lancement de RanaWalk. "
+                "Ceux qui rejoignent maintenant sont les premiers à l'essayer — avec un avantage exclusif.",
+        "perk_label": "Avantage de lancement",
+        "perk": "Un coupon de réduction réservé pour toi au lancement de l'app.",
+        "next": "On t'écrit dès que RanaWalk est disponible. Rien d'autre à faire.",
+        "from_note": "Tu reçois ceci car tu t'es pré-inscrit depuis le Simulateur Coupe du Monde 2026 de FaberLoom, sponsorisé par RanaWalk.",
+        "ps": "Si ce n'était pas toi, ignore cet e-mail.",
+    },
+    "pt": {
+        "subject": "Você está pré-cadastrado no RanaWalk",
+        "preheader": "Sua vaga para o lançamento do RanaWalk está reservada.",
+        "tagline": "Sua próxima caminhada, recompensada.",
+        "lead": "Obrigado por participar! Você está <strong>pré-cadastrado</strong> para o lançamento do RanaWalk. "
+                "Quem entra agora é o primeiro a testar — e começa com um benefício exclusivo.",
+        "perk_label": "Benefício de lançamento",
+        "perk": "Um cupom de desconto reservado para você no lançamento do app.",
+        "next": "Avisamos por e-mail assim que o RanaWalk estiver disponível. Nada mais a fazer.",
+        "from_note": "Você recebe isto porque se pré-cadastrou no Simulador da Copa 2026 da FaberLoom, patrocinado pelo RanaWalk.",
+        "ps": "Se não foi você, pode ignorar este e-mail.",
+    },
+}
+
+
+def send_ranawalk_email(email, name="", lang="es"):
+    t = RANAWALK_STR.get(lang, RANAWALK_STR["es"])
+    _send(subject=t["subject"], to_email=email, template="ranawalk",
+          context={"t": t, "name": name or "caminante"})
+

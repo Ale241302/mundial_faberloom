@@ -310,16 +310,40 @@ def my_predictions(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def ranking(request):
+    from django.utils import timezone
+    from .fifa import get_live_panel
     eng = _score_engine()
-    rows = []
+    # "hoy": resultados actualizados hoy + partidos en vivo ahora
+    today = timezone.localdate()
+    today_slots = {(res.round, res.index)
+                   for res in Result.objects.filter(updated_at__date=today)}
+    try:
+        for (r, i) in _slot_overlay(get_live_panel()):
+            today_slots.add((r, i))
+    except Exception:
+        pass
+
+    uid = request.user.id if request.user.is_authenticated else None
+    base = []
     for u in User.objects.filter(role=User.Role.USER):
-        rows.append({"id": u.id, "name": u.name or u.email, "country": u.country,
-                     "points": eng.score_user(_user_pred_map(u))})
-    rows.sort(key=lambda x: x["points"], reverse=True)
-    for k, row in enumerate(rows):
-        row["rank"] = k + 1
-        row["me"] = request.user.is_authenticated and row["id"] == request.user.id
-    return Response({"ranking": rows, "ai_points": eng.score_ai()})
+        preds = _user_pred_map(u)
+        base.append({
+            "id": u.id, "name": u.name or u.email, "country": u.country,
+            "points": eng.score_user(preds),
+            "points_today": eng.score_user(preds, only=today_slots),
+        })
+
+    def ranked(key):
+        lst = sorted(base, key=lambda x: x[key], reverse=True)
+        return [{**row, "rank": k + 1, "me": row["id"] == uid}
+                for k, row in enumerate(lst)]
+
+    return Response({
+        "ranking": ranked("points"),
+        "ranking_today": ranked("points_today"),
+        "ai_points": eng.score_ai(),
+        "ai_points_today": eng.score_ai(only=today_slots),
+    })
 
 
 # ----------------------------------------------------------------------

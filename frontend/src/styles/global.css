@@ -367,3 +367,26 @@ select.fl-in{cursor:pointer}
 
 /* fila fijada: fondo SÓLIDO para que no se transparente la fila de abajo */
 .rankp-row.pinned{background:#F2DED5}
+
+/* ===== patrocinador RanaWalk (en partido en vivo) ===== */
+.rana{margin:0 0 12px;border:1px solid #BfE3CC;background:linear-gradient(180deg,#F1FAF4,#EAF7EF);border-radius:12px;overflow:hidden}
+.rana-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;flex-wrap:wrap}
+.rana-tag{display:flex;align-items:center;gap:7px;min-width:0}
+.rana-spk{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#3a8a5c}
+.rana-logo{font-family:var(--serif);font-style:italic;font-size:17px;color:#1F1E1C}
+.rana-logo span{color:#2E9E5B}
+.rana-cta{background:#2E9E5B;color:#fff;border:0;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.rana-cta:hover{filter:brightness(1.06)}
+.rana-cta:disabled{opacity:.7;cursor:default}
+.rana-cta.full{width:100%;margin-top:8px;padding:9px}
+.rana-form{padding:0 12px 12px;border-top:1px dashed #BfE3CC}
+.rana-form p{font-size:13px;color:#2a4a38;margin:10px 0 8px}
+.rana-form input{width:100%;border:1px solid #BfE3CC;border-radius:8px;padding:9px 11px;font-size:14px;background:#fff;color:#1F1E1C}
+.rana-note{padding:0 12px 11px;font-size:12.5px;color:#2E9E5B;font-weight:500}
+.rana.is-done .rana-cta{background:#6FBE92}
+
+/* pestañas del ranking (Total / Hoy) */
+.rankp-tabs{display:flex;gap:6px;margin:2px 0 10px}
+.rankp-tab{background:var(--paper2);border:1px solid var(--line);color:var(--taupe);font-size:12px;font-family:var(--mono);
+  padding:5px 14px;border-radius:8px;cursor:pointer}
+.rankp-tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
