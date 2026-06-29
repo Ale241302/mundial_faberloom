@@ -14,6 +14,7 @@ export function AppProvider({ children }) {
   const [predictions, setPredictions] = useState({});
   const [mode, setMode] = useState("pick");
   const [modal, setModal] = useState(null);
+  const [hoverPop, setHoverPop] = useState(null);   // popover de hover (uno solo, global)
   const [toastMsg, setToastMsg] = useState("");
   const toastTimer = useRef(null);
 
@@ -136,6 +137,7 @@ export function AppProvider({ children }) {
   const value = {
     lang, setLang, user, setUser, boot, engine, predictions, setPredictions,
     mode, setMode, modal, setModal, toast, toastMsg,
+    hoverPop, setHoverPop,
     loadBoot, afterAuth, logout, mc,
     isAdmin,
   };

@@ -1,15 +1,14 @@
-import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Flag } from "./ui.jsx";
 import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
 export default function MatchCard({ r, i, m, compact, column }) {
-  const { lang, engine, boot, mode, predictions, isAdmin, mc } = useApp();
+  const { lang, engine, boot, mode, predictions, isAdmin, mc, setHoverPop } = useApp();
   const l = L(lang);
   const lx = LX(lang);
-  const [pop, setPop] = useState(null);
   m = m || {};
   const known = m.a && m.b;
   const pa = known ? engine.pWin(m.a, m.b) : 0.5;
@@ -23,6 +22,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const canPredict = mode === "pick" && known && !lk && !isPlayed;
   const realCompact = compact && r <= 2 && known;
   const roundOpenResult = open && mode === "result" && known && isAdmin;
+  const key = `${r}-${i}`;
 
   const clsFor = (team) =>
     lk ? (lk === team ? "win" : "lose") : (mode === "pick" && up === team ? "pick" : "");
@@ -36,9 +36,11 @@ export default function MatchCard({ r, i, m, compact, column }) {
   const label = column ? "" : (r === 0 ? ROUND_LABELS[lang][0] : ROUND_LABELS[lang][r]);
 
   const showPop = (e) => {
+    if (!known) return;
     const b = e.currentTarget.getBoundingClientRect();
-    setPop({ x: b.left + b.width / 2, top: b.top, bottom: b.bottom });
+    setHoverPop({ key, a: m.a, b: m.b, pa, res, pos: { x: b.left + b.width / 2, top: b.top, bottom: b.bottom } });
   };
+  const hidePop = () => setHoverPop((p) => (p && p.key === key ? null : p));
 
   const CSide = ({ team }) => {
     if (!team) return <div className="cmps" style={{ opacity: 0.4 }}>·</div>;
@@ -84,12 +86,10 @@ export default function MatchCard({ r, i, m, compact, column }) {
       whileHover={isPlayed ? {} : { y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       className={"mtch" + (column ? " cmp" : "") + (realCompact ? " cmpd" : "") + (isPlayed ? " played" : "")}
-      onMouseEnter={known ? showPop : undefined}
-      onMouseMove={known && pop ? showPop : undefined}
-      onMouseLeave={() => setPop(null)}
+      onMouseEnter={showPop}
+      onMouseMove={showPop}
+      onMouseLeave={hidePop}
     >
-      {known && pop && <MatchPop a={m.a} b={m.b} pa={pa} res={res} engine={engine} pos={pop} />}
-
       {(label || predScore) && (
         <div className="rnd">
           <span>{label}</span>
@@ -144,17 +144,19 @@ export default function MatchCard({ r, i, m, compact, column }) {
   );
 }
 
-function MatchPop({ a, b, pa, res, engine, pos }) {
-  const live = res && res.status === "live";
+// Popover único global: se renderiza UNA sola vez (ver HoverPopLayer en Simulator).
+export function HoverPopLayer() {
+  const { hoverPop, engine } = useApp();
+  if (!hoverPop) return null;
+  const { a, b, pa, res, pos } = hoverPop;
   const pct = (x) => Math.round(x * 100);
   let ip = null, minute = "";
-  if (live && res.score && res.score.includes("-")) {
+  if (res && res.status === "live" && res.score && res.score.includes("-")) {
     const [sa, sb] = res.score.split("-").map((x) => parseInt(x, 10));
     minute = (res.minute || "").toString().replace(/[^0-9+']/g, "");
     const mn = parseInt(minute, 10) || 0;
     if (!isNaN(sa) && !isNaN(sb)) ip = engine.inPlay(pa, sa, sb, mn, "live");
   }
-  // colocar arriba de la card; si no cabe (card muy arriba), colocar abajo
   const above = pos.top > 230;
   const style = {
     position: "fixed", left: pos.x, zIndex: 9999, pointerEvents: "none",

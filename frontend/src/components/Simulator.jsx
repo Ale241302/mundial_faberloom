@@ -1,5 +1,6 @@
 import { Iso } from "./ui.jsx";
 import Bracket from "./Bracket.jsx";
+import { HoverPopLayer } from "./MatchCard.jsx";
 import MasterTable from "./MasterTable.jsx";
 import VsBar from "./VsBar.jsx";
 import { L, LX } from "../lib/i18n.js";
@@ -23,6 +24,7 @@ export default function Simulator() {
 
   return (
     <div className="wrap">
+      <HoverPopLayer />
       <div className="top">
         <div className="brand">
           <Iso /><span><span className="faber">Faber</span><span className="loom">Loom</span></span>
