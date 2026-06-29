@@ -28,7 +28,7 @@ export default function RankingPanel() {
   useEffect(() => { const t = setInterval(load, 45000); return () => clearInterval(t); }, [load]);
 
   const mine = (rows || []).find((r) => r.me);
-  const top = (rows || []).slice(0, 50);
+  const top = (rows || []).slice(0, 100);
   const showMineExtra = mine && !top.some((r) => r.me);
 
   return (
