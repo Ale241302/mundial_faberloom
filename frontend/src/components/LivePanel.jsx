@@ -93,6 +93,31 @@ function Stat({ label, value }) {
   return <div className="lp-stat"><span>{label}</span><b>{value}</b></div>;
 }
 
+function minNum(m) { const n = parseInt(String(m == null ? "" : m).replace(/[^0-9]/g, ""), 10); return Number.isNaN(n) ? 0 : n; }
+
+function ProbBar({ home, away, sa, sb, minute, status, engine, lang, txt }) {
+  if (!home || !away || !engine || status === "finished") return null;
+  const live = status === "live";
+  const pa = engine.pWin(home, away);
+  const ip = engine.inPlay(pa, sa || 0, sb || 0, live ? minNum(minute) : 0, live ? "live" : "scheduled");
+  const pc = (x) => Math.round(x * 100);
+  return (
+    <div className="lp-prob">
+      <div className="lp-prob-h">{live ? txt.winLive : txt.winPre}{live ? " (90')" : ""}</div>
+      <div className="lp-prob-row">
+        <span className="pp"><span className="pl">{tn(home, lang)}</span><b>{pc(ip.pA)}%</b></span>
+        <span className="pp"><span className="pl">{txt.draw}</span><b>{pc(ip.pD)}%</b></span>
+        <span className="pp right"><span className="pl">{tn(away, lang)}</span><b>{pc(ip.pB)}%</b></span>
+      </div>
+      <div className="lp-prob-bar">
+        <i className="a" style={{ width: pc(ip.pA) + "%" }} />
+        <i className="d" style={{ width: pc(ip.pD) + "%" }} />
+        <i className="b" style={{ width: pc(ip.pB) + "%" }} />
+      </div>
+    </div>
+  );
+}
+
 function StatsGrid({ match, txt }) {
   const s = match?.stats || {};
   const T = txt.stats || {};
@@ -135,6 +160,7 @@ function LpCard({ q, lang, txt, predictions, mc, engine, boot }) {
         <span className="lp-ct right">{tn(q.away, lang)} <Flag team={q.away} /></span>
       </div>
       {aiTxt && <div className="lp-cai">{aiTxt}</div>}
+      <ProbBar home={q.home} away={q.away} sa={hs} sb={as} minute={q.minute} status={q.status} engine={engine} lang={lang} txt={txt} />
       {has && (
         <div className="lp-crow">
           <span className="lp-cl">{txt.yourPred}</span>
@@ -228,6 +254,8 @@ export default function LivePanel() {
         </div>
         <TeamBlock side={main.away} align="right" lang={lang} />
       </div>
+
+      <ProbBar home={main.home?.name} away={main.away?.name} sa={main.home?.score} sb={main.away?.score} minute={main.minute} status={main.status} engine={engine} lang={lang} txt={txt} />
 
       {main.round != null && main.index != null && (
         <div className="lp-pred">

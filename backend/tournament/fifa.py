@@ -340,24 +340,36 @@ def _augment_with_kimi(panel):
         if not match:
             return
         stats = match.get("stats") or {}
+        home, away = _name(match.get("home")), _name(match.get("away"))
+        if not home or not away:
+            return
+        # 1) DATOS REALES de API-Football (solo partidos en vivo / finalizados)
+        if match.get("status") in ("live", "finished"):
+            try:
+                from . import apifootball
+                real = apifootball.live_stats(home, away)
+            except Exception:
+                real = {}
+            for k, pair in (real or {}).items():
+                if pair and (pair[0] is not None or pair[1] is not None):
+                    stats[k] = {"home": pair[0], "away": pair[1], "estimated": False}
+                    match["stats_real"] = True
+        # 2) lo que siga faltando -> ESTIMACIÓN (Kimi para el destacado, heurística el resto)
         missing = [k for k, v in stats.items()
                    if not v or (v.get("home") is None and v.get("away") is None)]
         if not missing:
-            return
-        home, away = _name(match.get("home")), _name(match.get("away"))
-        if not home or not away:
+            match["stats"] = stats
             return
         score = match.get("score") or ""
         est = (estimate_match_stats(home, away, score, match.get("status") or "")
                if use_kimi else _local_stats(home, away, score))
-        if not est:
-            return
-        for k in missing:
-            pair = est.get(k)
-            if pair and len(pair) == 2:
-                stats[k] = {"home": pair[0], "away": pair[1], "estimated": True}
+        if est:
+            for k in missing:
+                pair = est.get(k)
+                if pair and len(pair) == 2:
+                    stats[k] = {"home": pair[0], "away": pair[1], "estimated": True}
+            match["stats_estimated"] = True
         match["stats"] = stats
-        match["stats_estimated"] = True
 
     _fill(panel.get("in_play") or panel.get("next_match") or panel.get("last_result"), True)
     for q in (panel.get("queue") or []):

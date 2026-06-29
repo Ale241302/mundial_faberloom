@@ -319,3 +319,16 @@ select.fl-in{cursor:pointer}
 .profedit .pe-row{display:flex;flex-direction:column;gap:3px}
 .profedit .pe-cty{display:flex;align-items:center;gap:8px}
 .profedit select.fl-in{flex:1}
+.lp-prob{margin:10px 2px 4px}
+.lp-prob-h{font-family:var(--mono);font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--taupe);text-align:center;margin-bottom:5px}
+.lp-prob-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.lp-prob-row .pp{display:flex;flex-direction:column;gap:1px;flex:1}
+.lp-prob-row .pp.right{align-items:flex-end}
+.lp-prob-row .pp:nth-child(2){align-items:center}
+.lp-prob-row .pl{color:var(--taupe);font-size:11px}
+.lp-prob-row .pp b{font-family:var(--mono);font-weight:600}
+.lp-prob-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--paper2)}
+.lp-prob-bar i{display:block;height:100%;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.lp-prob-bar i.a{background:var(--green)}
+.lp-prob-bar i.d{background:var(--taupe);opacity:.5}
+.lp-prob-bar i.b{background:var(--slate)}

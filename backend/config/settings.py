@@ -193,3 +193,11 @@ KIMI_API_KEY = env("KIMI_API_KEY", "")
 KIMI_BASE_URL = env("KIMI_BASE_URL", "https://api.moonshot.ai/v1")
 KIMI_MODEL = env("KIMI_MODEL", "kimi-k2-0905-preview")
 KIMI_ENABLED = env_bool("KIMI_ENABLED", bool(KIMI_API_KEY))
+
+
+# ----- API-Football (api-sports.io): estadísticas reales en vivo -----
+APIFOOTBALL_KEY = env("APIFOOTBALL_KEY", "")
+APIFOOTBALL_HOST = env("APIFOOTBALL_HOST", "v3.football.api-sports.io")
+APIFOOTBALL_LEAGUE = int(env("APIFOOTBALL_LEAGUE", "1") or "1")     # Mundial = 1
+APIFOOTBALL_SEASON = int(env("APIFOOTBALL_SEASON", "2026") or "2026")
+APIFOOTBALL_ENABLED = bool(APIFOOTBALL_KEY)
