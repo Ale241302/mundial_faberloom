@@ -4,6 +4,7 @@ import LivePanel from "./LivePanel.jsx";
 import { HoverPopLayer } from "./MatchCard.jsx";
 import MasterTable from "./MasterTable.jsx";
 import VsBar from "./VsBar.jsx";
+import RankingPanel from "./RankingPanel.jsx";
 import { L, LX } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
@@ -51,6 +52,8 @@ export default function Simulator() {
       <div className="onb">
         {l.onb.map((o, i) => <div key={i}><b>{i + 1}</b> {o}</div>)}
       </div>
+
+      <RankingPanel />
 
       <VsBar />
 

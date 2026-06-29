@@ -270,3 +270,21 @@ select.fl-in{cursor:pointer}
 .lp-predin em{color:var(--taupe);font-style:normal;font-family:var(--mono)}
 .lp-predwin{color:var(--coral)!important}
 .lp-realsc{color:var(--ink)!important}
+
+/* ===== Ranking de jugadores ===== */
+.rankp{margin:14px 0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.rankp-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rankp-h h3{font-family:var(--serif);font-style:italic;font-weight:500;font-size:19px;color:var(--ink)}
+.rankp-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.rankp-ai{font-family:var(--mono);font-size:11px;color:var(--ocre)}
+.rankp-you{font-family:var(--mono);font-size:11px;color:var(--coral);background:rgba(201,100,66,.1);border:1px solid rgba(201,100,66,.3);border-radius:20px;padding:2px 9px}
+.rankp-list{display:flex;flex-direction:column;gap:3px;max-height:360px;overflow-y:auto}
+.rankp-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;border:1px solid transparent}
+.rankp-row:nth-child(odd){background:var(--paper2)}
+.rankp-row.me{background:rgba(201,100,66,.12);border-color:var(--coral)}
+.rankp-row .rk{font-family:var(--mono);font-size:13px;color:var(--taupe);text-align:center;font-weight:600}
+.rankp-row.me .rk{color:var(--coral)}
+.rankp-row .nm{font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.rankp-row .ywho{font-family:var(--mono);font-size:9px;background:var(--coral);color:#fff;padding:1px 6px;border-radius:4px;letter-spacing:.5px}
+.rankp-row .pt{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap}
+.rankp-row .pt small{font-weight:400;color:var(--taupe);font-size:10px}
