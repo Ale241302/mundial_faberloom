@@ -48,16 +48,30 @@ class Command(BaseCommand):
             Team.objects.all().delete()
 
         stats = wc.get("STATS", {})
+        # Claves calculadas en vivo que NO se deben pisar al re-sembrar en cada deploy
+        LIVE_KEYS = ("posg", "res", "ko_gf", "ko_gc", "proy")
         for name, (flag, elo) in wc["TEAMS"].items():
+            base = dict(stats.get(name, {}))
+            existing = Team.objects.filter(name=name).first()
+            if existing and existing.stats:
+                for k in LIVE_KEYS:
+                    if existing.stats.get(k) is not None:
+                        base[k] = existing.stats[k]
             Team.objects.update_or_create(
                 name=name,
                 defaults={
                     "code": CC.get(name, ""),
                     "elo": int(elo),
                     "host": name in HOSTS,
-                    "stats": stats.get(name, {}),
+                    "stats": base,
                 },
             )
+        # grupos/posición reales de FIFA (estáticos): siempre presentes tras el seed
+        try:
+            from tournament.fifa import apply_standings
+            apply_standings()
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"apply_standings: {e}"))
         self.stdout.write(self.style.SUCCESS(f"Equipos: {Team.objects.count()}"))
 
         for row in wc["R32"]:
