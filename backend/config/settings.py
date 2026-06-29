@@ -138,6 +138,24 @@ CELERY_BROKER_URL = env("REDIS_URL", "redis://mundial-redis:6379/0")
 CELERY_RESULT_BACKEND = env("REDIS_URL", "redis://mundial-redis:6379/0")
 CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_EAGER", False)
 
+# ---- Cache (panel EN VIVO de FIFA). Redis compartido entre workers si hay
+#      REDIS_URL; si no, LocMem por proceso. TTL corto, ver tournament/fifa.py.
+_REDIS_URL = env("REDIS_URL", "")
+if _REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "mundial-live",
+        }
+    }
+
 # =====================================================================
 #  CORREO  — se envía vía mail.mwt.one (SMTP existente), From "Mundial
 #  FaberLoom". Ver cloudflare-email.md para SPF/DKIM/DMARC de faberloom.ai
@@ -175,16 +193,3 @@ KIMI_API_KEY = env("KIMI_API_KEY", "")
 KIMI_BASE_URL = env("KIMI_BASE_URL", "https://api.moonshot.ai/v1")
 KIMI_MODEL = env("KIMI_MODEL", "kimi-k2-0905-preview")
 KIMI_ENABLED = env_bool("KIMI_ENABLED", bool(KIMI_API_KEY))
-
-if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-
-# Sincronización automática de resultados FIFA cada 2 minutos
-CELERY_BEAT_SCHEDULE = {
-    "sync-fifa-results": {
-        "task": "tournament.tasks.sync_fifa_results",
-        "schedule": 120.0,
-    },
-}

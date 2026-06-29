@@ -16,6 +16,7 @@ async function req(method, path, body) {
 export const api = { get: (p) => req("GET", p), post: (p, b) => req("POST", p, b), patch: (p, b) => req("PATCH", p, b), del: (p, b) => req("DELETE", p, b) };
 export const API = {
   bootstrap: (n = 1500) => api.get(`/bootstrap/?n=${n}`),
+  liveState: () => api.get(`/live/`),
   team: (name, lang, ai) => api.get(`/team/${encodeURIComponent(name)}/?lang=${lang}${ai ? "&ai=1" : ""}`),
   ranking: () => api.get(`/ranking/`),
   savePrediction: (p) => api.post(`/predictions/save/`, p),
@@ -24,6 +25,7 @@ export const API = {
   login: (b) => api.post(`/auth/login/`, b),
   logout: () => api.post(`/auth/logout/`),
   me: () => api.get(`/auth/me/`),
+  mePatch: (b) => api.patch(`/auth/me/`, b),
   resetRequest: (email) => api.post(`/auth/password/reset/`, { email }),
   resetValidate: (token) => api.get(`/auth/password/reset/validate/?token=${encodeURIComponent(token)}`),
   resetConfirm: (b) => api.post(`/auth/password/reset/confirm/`, b),
@@ -43,7 +45,4 @@ export const API = {
   adminMatchLock: (b) => api.post(`/admin/match-lock/`, b),
   adminPredictions: () => api.get(`/admin/predictions/`),
   adminPredictionDelete: (id) => api.del(`/admin/predictions/${id}/`),
-  waitlist: (b) => api.post(`/auth/waitlist/`, b),
-  activationValidate: (token) => api.get(`/auth/activation/validate/?token=${encodeURIComponent(token)}`),
-  activationComplete: (b) => api.post(`/auth/activation/complete/`, b),
 };

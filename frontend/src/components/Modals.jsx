@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Modal, Eye, Flag } from "./ui.jsx";
-import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
+import { L, LX, ROUND_LABELS, tn } from "../lib/i18n.js";
 import { API } from "../lib/api.js";
 import { useApp } from "../lib/store.jsx";
 import TeamDossier from "./TeamDossier.jsx";
@@ -283,7 +283,7 @@ function AdminModal({ onClose }) {
 
 /* Pronósticos: ver todos, quién, cuándo, partido y eliminar */
 function PredsTab() {
-  const { toast } = useApp();
+  const { toast, lang } = useApp();
   const [rows, setRows] = useState(null);
   const load = () => API.adminPredictions().then(setRows).catch(() => setRows([]));
   useEffect(() => { load(); }, []);
@@ -296,7 +296,7 @@ function PredsTab() {
       <tbody>{rows.map((p) => (
         <tr key={p.id}>
           <td>{p.user}<div style={{ fontSize: 11, color: "var(--taupe)" }}>{p.email}</div></td>
-          <td style={{ fontSize: 12 }}>{p.round_label}<div style={{ color: "var(--taupe)" }}>{p.team_a || "?"} vs {p.team_b || "?"}</div></td>
+          <td style={{ fontSize: 12 }}>{p.round_label}<div style={{ color: "var(--taupe)" }}>{tn(p.team_a, lang) || "?"} vs {tn(p.team_b, lang) || "?"}</div></td>
           <td style={{ fontFamily: "var(--mono)" }}>{p.pick || "-"}{p.score ? " · " + p.score : ""}</td>
           <td style={{ fontSize: 11, color: "var(--taupe)" }}>{new Date(p.updated_at).toLocaleString()}</td>
           <td><button className="ghost" style={{ color: "var(--red)" }} onClick={() => del(p.id)}>Eliminar</button></td>

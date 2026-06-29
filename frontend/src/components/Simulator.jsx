@@ -1,5 +1,6 @@
 import { Iso } from "./ui.jsx";
 import Bracket from "./Bracket.jsx";
+import LivePanel from "./LivePanel.jsx";
 import { HoverPopLayer } from "./MatchCard.jsx";
 import MasterTable from "./MasterTable.jsx";
 import VsBar from "./VsBar.jsx";
@@ -31,7 +32,7 @@ export default function Simulator() {
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <div className="lang">
-            {["es", "en", "fr"].map((g) => (
+            {["es", "en", "fr", "pt"].map((g) => (
               <button key={g} className={lang === g ? "on" : ""} onClick={() => setLang(g)}>{g.toUpperCase()}</button>
             ))}
           </div>
@@ -44,6 +45,8 @@ export default function Simulator() {
         <h1 dangerouslySetInnerHTML={{ __html: l.htitle.replace(/\b(IA|AI)\b/, "<em>$1</em>") }} />
         <div className="hsub">{l.hsub}</div>
       </div>
+
+      <LivePanel />
 
       <div className="onb">
         {l.onb.map((o, i) => <div key={i}><b>{i + 1}</b> {o}</div>)}

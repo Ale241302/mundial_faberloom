@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Flag } from "./ui.jsx";
-import { L, LX, ROUND_LABELS } from "../lib/i18n.js";
+import { L, LX, ROUND_LABELS, tn } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
 const fmtMin = (mn) => {
@@ -61,7 +61,7 @@ export default function MatchCard({ r, i, m, compact, column }) {
     return (
       <div className={"cmps " + clsFor(team)} onClick={() => mc.pick(r, i, team, m)}>
         <Flag team={team} />
-        <span className="tnm" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team}</span>
+        <span className="tnm" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tn(team, lang)}</span>
         {ap === team && open && !isPlayed && <span className="tagai">{l.ai}</span>}
         <span className="pc">{pc}</span>
       </div>
@@ -70,13 +70,15 @@ export default function MatchCard({ r, i, m, compact, column }) {
 
   const Side = ({ team }) => {
     if (!team) return <div className="side" style={{ opacity: 0.4 }}>{l.tbd}</div>;
+    const pc = known ? Math.round(engine.pWin(team, team === m.a ? m.b : m.a) * 100) + "%" : "";
     return (
       <div className={"side " + clsFor(team)} onClick={() => mc.pick(r, i, team, m)}>
         <span className="nm">
           <Flag team={team} />
-          <span className="tnm">{team}</span>
+          <span className="tnm">{tn(team, lang)}</span>
           {ap === team && open && !isPlayed && <span className="tagai">{l.ai}</span>}
         </span>
+        {pc && <span className="pc">{pc}</span>}
       </div>
     );
   };

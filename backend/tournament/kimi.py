@@ -96,3 +96,61 @@ def projection(team_a, team_b, prob_a, stats_a=None, stats_b=None, lang="es"):
 
 def commentary(me, ai, lang="es"):
     return None
+
+
+# ----------------------------------------------------------------------
+#  Estimación de estadísticas de partido cuando FIFA no las trae
+# ----------------------------------------------------------------------
+def _parse_score(score):
+    if score and "-" in str(score):
+        try:
+            a, b = [int(x) for x in str(score).split("-")[:2]]
+            return a, b
+        except (ValueError, TypeError):
+            pass
+    return None, None
+
+
+def _local_stats(home, away, score):
+    """Estimación simple sin LLM (cuando no hay API key). Ligeramente informada
+    por el marcador. Todo es estimación del modelo, no dato real."""
+    sa, sb = _parse_score(score)
+    lead = (sa - sb) if (sa is not None and sb is not None) else 0
+    ph = 50 + max(-12, min(12, lead * 4))
+    return {
+        "possession": [ph, 100 - ph],
+        "shots": [11, 9],
+        "shots_on_target": [4, 3],
+        "corners": [5, 4],
+        "fouls": [11, 11],
+        "xg": [1.2, 1.0],
+    }
+
+
+def estimate_match_stats(home, away, score="", status=""):
+    """Estima stats plausibles del partido (posesión, remates, xG…) cuando la
+    API de FIFA no las entrega. Devuelve {stat: [casa, visita]}. SIEMPRE es
+    estimación del modelo (no dato real). Kimi si hay key; si no, heurística."""
+    if not _enabled():
+        return _local_stats(home, away, score)
+    try:
+        user = (
+            f"Partido: {home} (casa) vs {away} (visita). "
+            f"Marcador actual: {score or 's/n'} · estado: {status or 's/n'}.\n"
+            "Estima estadísticas PLAUSIBLES para este partido. Son estimaciones del "
+            "modelo, no datos reales. Devuelve SOLO este JSON con pares [casa, visita]:\n"
+            '{"possession":[55,45],"shots":[12,8],"shots_on_target":[5,3],'
+            '"corners":[6,4],"fouls":[10,12],"xg":[1.4,0.9]}'
+        )
+        raw = _chat([{"role": "system", "content": SYSTEM},
+                     {"role": "user", "content": user}], max_tokens=220)
+        m = re.search(r"\{.*\}", raw, re.S)
+        data = json.loads(m.group(0)) if m else {}
+        out = {}
+        for k in ("possession", "shots", "shots_on_target", "corners", "fouls", "xg"):
+            v = data.get(k)
+            if isinstance(v, list) and len(v) == 2:
+                out[k] = [v[0], v[1]]
+        return out or _local_stats(home, away, score)
+    except Exception:
+        return _local_stats(home, away, score)

@@ -11,12 +11,14 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [boot, setBoot] = useState(null);
   const [engine, setEngine] = useState(null);
+  const [livePanel, setLivePanel] = useState(null);
   const [predictions, setPredictions] = useState({});
   const [mode, setMode] = useState("pick");
   const [modal, setModal] = useState(null);
   const [hoverPop, setHoverPop] = useState(null);   // popover de hover (uno solo, global)
   const [toastMsg, setToastMsg] = useState("");
   const toastTimer = useRef(null);
+  const bootRef = useRef(null);
 
   const toast = useCallback((m) => {
     setToastMsg(m);
@@ -27,6 +29,7 @@ export function AppProvider({ children }) {
   const setLang = useCallback((lg) => {
     setLangState(lg);
     localStorage.setItem("fl_lang", lg);
+    if (getToken()) API.mePatch({ lang: lg }).then(setUser).catch(() => {});
   }, []);
 
   const predToMap = (list) => {
@@ -40,9 +43,23 @@ export function AppProvider({ children }) {
 
   const loadBoot = useCallback(async (n = 1500) => {
     const data = await API.bootstrap(n);
+    bootRef.current = data;
     setBoot(data);
+    setLivePanel(data.live_panel || null);
     setEngine(makeEngine(data));
     if (data.my_predictions) setPredictions(predToMap(data.my_predictions));
+    return data;
+  }, []);
+
+  const loadLiveState = useCallback(async () => {
+    const data = await API.liveState();
+    setLivePanel(data.live_panel || null);
+    if (bootRef.current) {
+      const next = { ...bootRef.current, ...data };
+      bootRef.current = next;
+      setBoot(next);
+      setEngine(makeEngine(next));
+    }
     return data;
   }, []);
 
@@ -54,6 +71,25 @@ export function AppProvider({ children }) {
       try { await loadBoot(); } catch (e) { console.error(e); }
     })();
   }, [loadBoot]);
+
+  useEffect(() => {
+    let stopped = false;
+    let timer = null;
+    const tick = async () => {
+      let sec = 60;
+      try {
+        const data = await loadLiveState();
+        sec = Number(data?.live_panel?.refresh_seconds || data?.refresh_seconds || 60);
+      } catch (e) {
+        console.error(e);
+      }
+      if (!stopped) {
+        timer = setTimeout(tick, Math.max(30, Math.min(90, sec || 60)) * 1000);
+      }
+    };
+    timer = setTimeout(tick, 30000);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [loadLiveState]);
 
   const afterAuth = useCallback(async (payload) => {
     setToken(payload.token);
@@ -138,6 +174,7 @@ export function AppProvider({ children }) {
     lang, setLang, user, setUser, boot, engine, predictions, setPredictions,
     mode, setMode, modal, setModal, toast, toastMsg,
     hoverPop, setHoverPop,
+    livePanel, setLivePanel, loadLiveState,
     loadBoot, afterAuth, logout, mc,
     isAdmin,
   };

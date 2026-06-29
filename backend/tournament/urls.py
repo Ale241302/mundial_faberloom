@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("bootstrap/", views.bootstrap),
+    path("live/", views.live_state),
     path("simulate/", views.simulate),
     path("team/<str:name>/", views.team_detail),
     path("predictions/", views.my_predictions),
@@ -18,6 +19,5 @@ urlpatterns = [
     path("admin/match-lock/", views.admin_match_lock),
     path("admin/predictions/", views.admin_predictions),
     path("admin/predictions/<int:pid>/", views.admin_prediction_delete),
-
     path("admin/resolve/", views.admin_resolve),
 ]

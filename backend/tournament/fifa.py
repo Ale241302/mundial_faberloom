@@ -5,8 +5,10 @@ stage -> ronda, y vuelca marcadores/estado en Result.
 
 Lo ejecuta una tarea Celery (cada par de minutos) o el comando `sync_fifa`.
 """
+from datetime import datetime, timezone
+
 import requests
-from django.conf import settings
+from django.core.cache import cache
 
 FIFA_BASE = "https://api.fifa.com/api/v3"
 ID_COMPETITION = "17"
@@ -34,12 +36,16 @@ FIFA_CODE = {
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (MundialFaberLoom sync)"}
+LIVE_CACHE_KEY = "fifa_live_panel_v1"
+LIVE_STALE_CACHE_KEY = "fifa_live_panel_stale_v1"
+LIVE_REFRESH_SECONDS = 60
+LIVE_CACHE_TTL = 45
 
 
-def _fetch_matches():
+def _fetch_matches(count=100):
     url = f"{FIFA_BASE}/calendar/matches"
     params = {"idCompetition": ID_COMPETITION, "idSeason": ID_SEASON,
-              "count": 100, "language": "es"}
+              "count": count, "language": "es"}
     r = requests.get(url, params=params, headers=HEADERS, timeout=25)
     r.raise_for_status()
     return r.json().get("Results", [])
@@ -50,15 +56,312 @@ def _team_name(side):
     return FIFA_CODE.get(code)
 
 
+def _local_desc(value):
+    """Extrae Description de campos localizados de FIFA sin asumir idioma."""
+    if isinstance(value, list) and value:
+        return value[0].get("Description") or ""
+    if isinstance(value, dict):
+        return value.get("Description") or ""
+    return value or ""
+
+
+def _display_team_name(side):
+    return _team_name(side) or _local_desc((side or {}).get("TeamName")) or (side or {}).get("Abbreviation") or ""
+
+
 def _classify(item, played):
-    # FIFA: MatchStatus 0 = FINALIZADO; 1 = no empezado. En vivo => hay marcador
-    # pero todavía sin ganador definido.
+    # FIFA observado en /calendar/matches: MatchStatus 0 = finalizado,
+    # MatchStatus 1 = no empezado. Otros codigos (o marcador sin final) se
+    # tratan como en vivo. Nunca inferimos estadisticas inexistentes.
+    status = item.get("MatchStatus")
+    if str(status) == "0":
+        return "finished"
+    if str(status) == "1" and not played:
+        return "scheduled"
     if not played:
         return "scheduled"
-    if item.get("Winner") or item.get("MatchStatus") == 0:
-        return "finished"
     return "live"
 
+
+def _find_key(obj, names):
+    """Busca una clave exacta case-insensitive en dict/list anidados."""
+    wanted = {str(n).lower() for n in names}
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if str(k).lower() in wanted:
+                return v
+        for v in obj.values():
+            found = _find_key(v, names)
+            if found is not None:
+                return found
+    elif isinstance(obj, list):
+        for v in obj:
+            found = _find_key(v, names)
+            if found is not None:
+                return found
+    return None
+
+
+def _num(value):
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    try:
+        s = str(value).replace("%", "").strip()
+        return float(s) if "." in s else int(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def _stat_pair(value):
+    """Normaliza un posible par home/away; si no existe, devuelve N/D logico."""
+    empty = {"home": None, "away": None}
+    if value is None:
+        return empty
+    if isinstance(value, str) and "-" in value:
+        a, b = value.split("-", 1)
+        return {"home": _num(a), "away": _num(b)}
+    if isinstance(value, dict):
+        home = None
+        away = None
+        for key in ("Home", "HomeTeam", "HomeValue", "HomeTeamValue", "home", "homeTeam"):
+            if key in value:
+                home = value[key]
+                break
+        for key in ("Away", "AwayTeam", "AwayValue", "AwayTeamValue", "away", "awayTeam"):
+            if key in value:
+                away = value[key]
+                break
+        if isinstance(home, dict):
+            home = home.get("Value") or home.get("value") or home.get("Score")
+        if isinstance(away, dict):
+            away = away.get("Value") or away.get("value") or away.get("Score")
+        return {"home": _num(home), "away": _num(away)}
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        return {"home": _num(value[0]), "away": _num(value[1])}
+    return empty
+
+
+def _stat_from(item, *names):
+    return _stat_pair(_find_key(item, names))
+
+
+def _stats(item):
+    # En la respuesta auditada el unico campo de estad?stica de partido presente
+    # es BallPossession, y actualmente viene null. El resto se expone como null
+    # para que el front pinte [N/D] en vez de inventar datos.
+    return {
+        "possession": _stat_pair(item.get("BallPossession")),
+        "shots": _stat_from(item, "Shots", "TotalShots", "TotalAttempts", "AttemptsOnGoal"),
+        "shots_on_target": _stat_from(item, "ShotsOnTarget", "OnTarget", "AttemptsOnTarget"),
+        "corners": _stat_from(item, "Corners", "CornerKicks"),
+        "fouls": _stat_from(item, "Fouls", "FoulsCommitted"),
+        "yellow_cards": _stat_from(item, "YellowCards", "YellowCard"),
+        "red_cards": _stat_from(item, "RedCards", "RedCard"),
+        "xg": _stat_from(item, "ExpectedGoals", "xG"),
+    }
+
+
+def _score(side, item, top_key):
+    value = item.get(top_key)
+    if value is not None:
+        return value
+    return (side or {}).get("Score")
+
+
+def _round_index_for(home, away, round_no, eng):
+    if eng is None or round_no is None or not home or not away:
+        return None, None
+    try:
+        rounds = eng.resolve("fav")["rounds"]
+    except Exception:
+        return None, None
+    if round_no >= len(rounds):
+        return None, None
+    target = {home, away}
+    for idx, m in enumerate(rounds[round_no]):
+        if m.get("a") and m.get("b") and {m["a"], m["b"]} == target:
+            return round_no, idx
+    return None, None
+
+
+def _probabilities(home, away, eng):
+    if eng is None or not home or not away or home not in eng.teams or away not in eng.teams:
+        return None
+    pa = eng.p_win(home, away)
+    fav = home if pa >= 0.5 else away
+    fav_p = pa if pa >= 0.5 else (1 - pa)
+    return {
+        home: pa,
+        away: 1 - pa,
+        "favorite": fav,
+        "favorite_prob": round(fav_p * 100),
+    }
+
+
+def _normalize_match(item, eng=None):
+    home_side, away_side = item.get("Home") or {}, item.get("Away") or {}
+    home = _display_team_name(home_side)
+    away = _display_team_name(away_side)
+    hs = _score(home_side, item, "HomeTeamScore")
+    as_ = _score(away_side, item, "AwayTeamScore")
+    played = hs is not None and as_ is not None
+    status = _classify(item, played)
+    round_no = STAGE_ROUND.get(str(item.get("IdStage")))
+    r, idx = _round_index_for(home, away, round_no, eng)
+    score = f"{hs}-{as_}" if played else ""
+    current_leader = ""
+    if played:
+        if hs > as_:
+            current_leader = home
+        elif as_ > hs:
+            current_leader = away
+    winner = ""
+    if status == "finished" and played:
+        if current_leader:
+            winner = current_leader
+        else:
+            hp = item.get("HomeTeamPenaltyScore")
+            ap = item.get("AwayTeamPenaltyScore")
+            if hp is not None and ap is not None:
+                winner = home if hp >= ap else away
+
+    return {
+        "id": str(item.get("IdMatch") or ""),
+        "match_number": item.get("MatchNumber"),
+        "round": r,
+        "index": idx,
+        "stage_id": str(item.get("IdStage") or ""),
+        "stage": _local_desc(item.get("StageName")),
+        "status": status,
+        "minute": item.get("MatchTime") or "",
+        "date": item.get("Date") or "",
+        "local_date": item.get("LocalDate") or "",
+        "stadium": _local_desc((item.get("Stadium") or {}).get("Name")),
+        "city": _local_desc((item.get("Stadium") or {}).get("CityName")),
+        "home": {
+            "name": home,
+            "code": home_side.get("Abbreviation") or home_side.get("IdCountry") or "",
+            "score": hs,
+            "penalty_score": item.get("HomeTeamPenaltyScore"),
+        },
+        "away": {
+            "name": away,
+            "code": away_side.get("Abbreviation") or away_side.get("IdCountry") or "",
+            "score": as_,
+            "penalty_score": item.get("AwayTeamPenaltyScore"),
+        },
+        "score": score,
+        "winner": winner,
+        "current_leader": current_leader,
+        "stats": _stats(item),
+        "probabilities": _probabilities(home, away, eng),
+        "raw_fields": sorted(item.keys()),
+    }
+
+
+def _build_live_panel(items):
+    from .engine import build_engine
+
+    try:
+        eng = build_engine()
+    except Exception:
+        eng = None
+    matches = [_normalize_match(it, eng) for it in items]
+    matches = [m for m in matches if m["home"]["name"] or m["away"]["name"]]
+
+    live = sorted([m for m in matches if m["status"] == "live"], key=lambda x: x.get("date") or "")
+    scheduled = sorted([m for m in matches if m["status"] == "scheduled"], key=lambda x: x.get("date") or "")
+    finished = sorted([m for m in matches if m["status"] == "finished"], key=lambda x: x.get("date") or "", reverse=True)
+
+    api_fields = sorted({k for it in items for k in it.keys()})
+    return {
+        "mode": "live" if live else "fallback",
+        "in_play": live[0] if live else None,
+        "next_match": scheduled[0] if scheduled else None,
+        "last_result": finished[0] if finished else None,
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "refresh_seconds": LIVE_REFRESH_SECONDS,
+        "api_fields": api_fields,
+    }
+
+
+def _panel_from_db():
+    """Fallback: arma el panel desde la BD (último resultado) si FIFA cae."""
+    from .engine import build_engine
+    from .models import Result
+    empty = {k: {"home": None, "away": None} for k in
+             ("possession", "shots", "shots_on_target", "corners", "fouls", "yellow_cards", "red_cards", "xg")}
+    last = None
+    try:
+        rounds = build_engine().resolve("fav")["rounds"]
+        res = Result.objects.filter(status="finished").order_by("-round", "-index").first()
+        if res and res.round < len(rounds) and res.index < len(rounds[res.round]):
+            s = rounds[res.round][res.index]
+            last = {"status": "finished", "round": res.round, "index": res.index,
+                    "home": {"name": s.get("a"), "score": None}, "away": {"name": s.get("b"), "score": None},
+                    "score": res.score, "winner": res.winner, "current_leader": res.winner,
+                    "minute": "", "stats": dict(empty), "probabilities": None}
+    except Exception:
+        pass
+    return {"mode": "fallback", "in_play": None, "next_match": None, "last_result": last,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "refresh_seconds": LIVE_REFRESH_SECONDS, "api_fields": [], "source_ok": False}
+
+
+def _augment_with_kimi(panel):
+    """Si FIFA no trae stats del partido destacado, Kimi las ESTIMA (marcadas
+    como estimación del modelo). Solo el partido en juego / próximo / último."""
+    from .kimi import estimate_match_stats
+    match = panel.get("in_play") or panel.get("next_match") or panel.get("last_result")
+    if not match:
+        return
+    stats = match.get("stats") or {}
+    missing = [k for k, v in stats.items()
+               if not v or (v.get("home") is None and v.get("away") is None)]
+    if not missing:
+        return
+    home = (match.get("home") or {}).get("name")
+    away = (match.get("away") or {}).get("name")
+    if not home or not away:
+        return
+    est = estimate_match_stats(home, away, match.get("score") or "", match.get("status") or "")
+    if not est:
+        return
+    for k in missing:
+        pair = est.get(k)
+        if pair and len(pair) == 2:
+            stats[k] = {"home": pair[0], "away": pair[1], "estimated": True}
+    match["stats"] = stats
+    match["stats_estimated"] = True
+
+
+def get_live_panel(force=False):
+    """Panel en vivo cacheado (TTL corto). Si FIFA cae: cache stale o BD local.
+    Rellena stats faltantes con estimación de Kimi."""
+    if not force:
+        cached = cache.get(LIVE_CACHE_KEY)
+        if cached:
+            return cached
+    try:
+        panel = _build_live_panel(_fetch_matches())
+        panel["source_ok"] = True
+    except Exception:
+        stale = cache.get(LIVE_STALE_CACHE_KEY)
+        if stale:
+            stale = dict(stale)
+            stale["mode"] = "stale"
+            cache.set(LIVE_CACHE_KEY, stale, LIVE_CACHE_TTL)
+            return stale
+        panel = _panel_from_db()
+    try:
+        _augment_with_kimi(panel)
+    except Exception:
+        pass
+    cache.set(LIVE_CACHE_KEY, panel, LIVE_CACHE_TTL)
+    cache.set(LIVE_STALE_CACHE_KEY, panel, 60 * 30)
+    return panel
 
 def sync_results():
     """Devuelve (creados/actualizados, lista de logs). Idempotente."""

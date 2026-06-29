@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Flag } from "./ui.jsx";
-import { L } from "../lib/i18n.js";
+import { L, tn } from "../lib/i18n.js";
 import { useApp } from "../lib/store.jsx";
 
 export default function MasterTable({ query, onOpenTeam }) {
@@ -56,7 +56,7 @@ export default function MasterTable({ query, onOpenTeam }) {
           const s = status(r.t);
           return (
             <tr key={k} onClick={() => onOpenTeam(r.t)}>
-              <td><Flag team={r.t} /> {r.t}</td>
+              <td><Flag team={r.t} /> {tn(r.t, lang)}</td>
               <td>{r.grp}</td>
               <td>{r.xg ?? "—"}</td>
               <td>{(r.gf ?? "—")}/{(r.gc ?? "—")}</td>

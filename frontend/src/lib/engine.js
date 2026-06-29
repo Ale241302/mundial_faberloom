@@ -30,7 +30,7 @@ export function makeEngine(boot) {
     cur.forEach((m, i) => { const o = ov(r, i); if (o) { if (o.team_a) m.a = o.team_a; if (o.team_b) m.b = o.team_b; } });
   }
 
-  function resolve(mode = "fav") {
+  function resolve(mode = "fav", picks = null) {
     let rounds = [round0.map((m) => ({ ...m }))];
     let cur = rounds[0];
     const res = [];
@@ -40,9 +40,13 @@ export function makeEngine(boot) {
       cur.forEach((m, i) => {
         let x = null;
         const lk = lock(r, i);
-        if (lk) x = lk;
-        else if (m.a && m.b)
-          x = mode === "sample" ? (Math.random() < pWin(m.a, m.b) ? m.a : m.b) : (pWin(m.a, m.b) >= 0.5 ? m.a : m.b);
+        if (lk) x = lk;                       // 1) resultado real manda
+        else if (m.a && m.b) {
+          const up = ((picks && (picks[r] || picks[String(r)])) || {})[i]
+                  || ((picks && (picks[r] || picks[String(r)])) || {})[String(i)] || {};
+          if (up.pick && (up.pick === m.a || up.pick === m.b)) x = up.pick;   // 2) tu pick
+          else x = mode === "sample" ? (Math.random() < pWin(m.a, m.b) ? m.a : m.b) : (pWin(m.a, m.b) >= 0.5 ? m.a : m.b); // 3) modelo
+        }
         winners.push(x);
       });
       if (r < 4) {

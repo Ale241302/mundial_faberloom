@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, Flag } from "./ui.jsx";
-import { L } from "../lib/i18n.js";
+import { L, tn } from "../lib/i18n.js";
 import { API } from "../lib/api.js";
 import { useApp } from "../lib/store.jsx";
 
@@ -46,7 +46,7 @@ export default function TeamDossier({ name, onClose }) {
         <div style={{ display: "flex", gap: 11, alignItems: "center" }}>
           <span className="fl"><Flag team={name} big /></span>
           <div>
-            <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19 }}>{name}</div>
+            <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19 }}>{tn(name, lang)}</div>
             <div className="note" style={{ fontStyle: "normal" }}>
               Elo {team.elo}{team.host ? " (+55)" : ""} · {st.posg || `${l.group} —`}
             </div>
@@ -69,10 +69,10 @@ export default function TeamDossier({ name, onClose }) {
               <h3>Próximo rival probable · {nm.round_label}</h3>
               <div className="plrow" style={{ borderBottom: 0 }}>
                 <span className="plteams">
-                  <Flag team={nm.opponent} /> <b>{nm.opponent}</b>
+                  <Flag team={nm.opponent} /> <b>{tn(nm.opponent, lang)}</b>
                   {nm.pending && <span className="note" style={{ marginLeft: 6 }}>(proyección del modelo)</span>}
                 </span>
-                <span style={{ fontFamily: "var(--mono)", color: "var(--coral)" }}>{name} {nm.my_prob}%</span>
+                <span style={{ fontFamily: "var(--mono)", color: "var(--coral)" }}>{tn(name, lang)} {nm.my_prob}%</span>
               </div>
             </div>
           )}

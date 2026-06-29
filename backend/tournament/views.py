@@ -36,15 +36,72 @@ def _user_pred_map(user):
 
 
 def _int_keyed(d):
-    """Convierte claves de dict a str (JSON) recursivamente para rondas/índices."""
+    """Convierte claves de dict a str (JSON) recursivamente para rondas/indices."""
     out = {}
     for k, v in d.items():
         out[str(k)] = {str(kk): vv for kk, vv in v.items()} if isinstance(v, dict) else v
     return out
 
 
+def _results_payload():
+    results = {}
+    for r in Result.objects.all():
+        results.setdefault(str(r.round), {})[str(r.index)] = {
+            "winner": r.winner, "score": r.score,
+            "status": getattr(r, "status", "finished"), "minute": getattr(r, "minute", ""),
+        }
+    return results
+
+
+def _closed_payload():
+    closed = {}
+    for cm in ClosedMatch.objects.all():
+        closed.setdefault(str(cm.round), {})[str(cm.index)] = True
+    return closed
+
+
+def _overrides_payload():
+    overrides = {}
+    for bf in BracketFixture.objects.all():
+        overrides.setdefault(str(bf.round), {})[str(bf.index)] = {
+            "team_a": bf.team_a, "team_b": bf.team_b,
+            "date_label": bf.date_label, "confirmed": bf.confirmed,
+        }
+    return overrides
+
+
+def _state_payload(state):
+    return {
+        "round_open": state.round_open,
+        "rounds_enabled": state.rounds_enabled,
+        "total_players": state.total_players,
+    }
+
+
+def _live_state_payload(request):
+    """Estado liviano para polling: evita recalcular Monte Carlo completo."""
+    from .fifa import get_live_panel
+
+    eng = build_engine()
+    state = TournamentState.get()
+    ai_picks, prob_f = eng.freeze("fav")
+    data = {
+        "state": _state_payload(state),
+        "results": _results_payload(),
+        "overrides": _overrides_payload(),
+        "closed_matches": _closed_payload(),
+        "ai_picks": _int_keyed(ai_picks),
+        "prob_f": _int_keyed(prob_f),
+        "ai_points": eng.score_ai(),
+        "live_panel": get_live_panel(force=request.query_params.get("force") == "1"),
+    }
+    if request.user.is_authenticated and not request.user.is_admin:
+        data["my_points"] = eng.score_user(_user_pred_map(request.user))
+    return data
+
+
 # ----------------------------------------------------------------------
-#  Bootstrap — todo lo que el front necesita para pintar (sin datos quemados)
+#  Bootstrap - todo lo que el front necesita para pintar (sin datos quemados)
 # ----------------------------------------------------------------------
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -55,25 +112,9 @@ def bootstrap(request):
     teams = {t.name: TeamSerializer(t).data for t in Team.objects.all()}
     fixtures = FixtureSerializer(Fixture.objects.all(), many=True).data
     market = {str(m.match_no): MarketSerializer(m).data for m in MarketOdds.objects.all()}
-
-    results = {}
-    for r in Result.objects.all():
-        results.setdefault(str(r.round), {})[str(r.index)] = {
-            "winner": r.winner, "score": r.score,
-            "status": getattr(r, "status", "finished"), "minute": getattr(r, "minute", ""),
-        }
-
-    closed = {}
-    for cm in ClosedMatch.objects.all():
-        closed.setdefault(str(cm.round), {})[str(cm.index)] = True
-
-    # partidos registrados por el admin (override del modelo)
-    overrides = {}
-    for bf in BracketFixture.objects.all():
-        overrides.setdefault(str(bf.round), {})[str(bf.index)] = {
-            "team_a": bf.team_a, "team_b": bf.team_b,
-            "date_label": bf.date_label, "confirmed": bf.confirmed,
-        }
+    results = _results_payload()
+    closed = _closed_payload()
+    overrides = _overrides_payload()
 
     ai_picks, prob_f = eng.freeze("fav")
     reach = eng.simulate(int(request.query_params.get("n", 1500)))
@@ -83,11 +124,7 @@ def bootstrap(request):
         "teams": teams,
         "fixtures": fixtures,
         "market": market,
-        "state": {
-            "round_open": state.round_open,
-            "rounds_enabled": state.rounds_enabled,
-            "total_players": state.total_players,
-        },
+        "state": _state_payload(state),
         "results": results,
         "overrides": overrides,
         "closed_matches": closed,
@@ -96,6 +133,7 @@ def bootstrap(request):
         "reach": reach,
         "ai_points": ai_points,
         "base_points": BASE,
+        "live_panel": _live_state_payload(request)["live_panel"],
     }
 
     if request.user.is_authenticated and not request.user.is_admin:
@@ -113,6 +151,12 @@ def simulate(request):
     eng = build_engine()
     n = int(request.data.get("n", 5000))
     return Response({"reach": eng.simulate(n)})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def live_state(request):
+    return Response(_live_state_payload(request))
 
 
 # ----------------------------------------------------------------------
@@ -288,7 +332,8 @@ def admin_result(request):
         Result.objects.update_or_create(
             round=r, index=i,
             defaults={"winner": request.data.get("winner", ""),
-                      "score": request.data.get("score", "")},
+                      "score": request.data.get("score", ""),
+                      "status": "finished", "minute": ""},
         )
     return Response({"ok": True})
 

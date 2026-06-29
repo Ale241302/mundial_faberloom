@@ -23,9 +23,9 @@ const EYE_ON = (
 );
 
 export default function Bracket() {
-  const { lang, engine } = useApp();
+  const { lang, engine, predictions } = useApp();
   const lx = LX(lang);
-  const rounds = engine.resolve("fav").rounds;
+  const rounds = engine.resolve("fav", predictions).rounds;
   const labels = ROUND_LABELS[lang];
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   const [viewRound, setViewRound] = useState(0);
