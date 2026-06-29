@@ -148,7 +148,14 @@ export default function Landing() {
     }
   }, []);
 
-  const toSim = () => nav("/simulador");
+  const toSim = () => {
+    let token = "";
+    try { token = (JSON.parse(localStorage.getItem("fl_pending") || "null") || {}).token || ""; } catch (_) {}
+    const path = token ? `/activar/${token}` : "/";
+    const local = /localhost|127\.0\.0\.1/.test(window.location.hostname);
+    if (local) nav(token ? path : "/simulador");
+    else window.location.href = "https://wc.faberloom.ai" + path;
+  };
 
   return (
     <div className="lp">

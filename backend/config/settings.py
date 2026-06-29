@@ -20,10 +20,10 @@ def env_bool(key, default=False):
 
 SECRET_KEY = env("SECRET_KEY", "dev-insecure-change-me")
 DEBUG = env_bool("DEBUG", False)
-ALLOWED_HOSTS = env("ALLOWED_HOSTS", "mundial.faberloom.ai,localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = env("ALLOWED_HOSTS", "faberloom.ai,www.faberloom.ai,wc.faberloom.ai,mundial.faberloom.ai,localhost,127.0.0.1").split(",")
 CSRF_TRUSTED_ORIGINS = env(
     "CSRF_TRUSTED_ORIGINS",
-    "https://mundial.faberloom.ai",
+    "https://faberloom.ai,https://www.faberloom.ai,https://wc.faberloom.ai,https://mundial.faberloom.ai",
 ).split(",")
 
 INSTALLED_APPS = [
@@ -126,12 +126,12 @@ REST_FRAMEWORK = {
 # ---- CORS ----
 CORS_ALLOWED_ORIGINS = env(
     "CORS_ALLOWED_ORIGINS",
-    "https://mundial.faberloom.ai,http://localhost:3200,http://localhost:5173",
+    "https://faberloom.ai,https://www.faberloom.ai,https://wc.faberloom.ai,https://mundial.faberloom.ai,http://localhost:3200,http://localhost:5173",
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 
 # ---- Frontend / public URLs (for email links) ----
-PUBLIC_SITE_URL = env("PUBLIC_SITE_URL", "https://mundial.faberloom.ai")
+PUBLIC_SITE_URL = env("PUBLIC_SITE_URL", "https://wc.faberloom.ai")
 
 # ---- Celery ----
 CELERY_BROKER_URL = env("REDIS_URL", "redis://mundial-redis:6379/0")

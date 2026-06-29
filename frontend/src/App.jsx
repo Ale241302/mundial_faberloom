@@ -7,6 +7,15 @@ import Landing from "./components/Landing.jsx";
 import Modals from "./components/Modals.jsx";
 import Toast from "./components/Toast.jsx";
 
+// El simulador vive en wc.faberloom.ai (o mundial.* por compatibilidad).
+// faberloom.ai (raíz) muestra la landing. En localhost, raíz = landing.
+const HOST = typeof window !== "undefined" ? window.location.hostname : "";
+const IS_SIM = /^wc\./.test(HOST) || /(^|\.)mundial\./.test(HOST);
+
+function SimHome() {
+  return <><Simulator /><CompleteFromLocal /></>;
+}
+
 // /reset/:token → modal de nueva contraseña (sobre el simulador)
 function ResetCatcher() {
   const { token } = useParams();
@@ -14,7 +23,7 @@ function ResetCatcher() {
   const nav = useNavigate();
   useEffect(() => {
     if (token) setModal({ type: "reset", data: { token } });
-    nav("/simulador", { replace: true });
+    nav("/", { replace: true });
   }, [token]); // eslint-disable-line
   return null;
 }
@@ -30,7 +39,7 @@ function ActivateCatcher() {
         .then((d) => { if (d.valid) setModal({ type: "complete", data: { token, email: d.email } }); })
         .catch(() => {});
     }
-    nav("/simulador", { replace: true });
+    nav("/", { replace: true });
   }, [token]); // eslint-disable-line
   return null;
 }
@@ -54,14 +63,15 @@ function CompleteFromLocal() {
 }
 
 export default function App() {
+  const Home = IS_SIM ? <SimHome /> : <Landing />;
   return (
     <>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/simulador" element={<><Simulator /><CompleteFromLocal /></>} />
+        <Route path="/" element={Home} />
+        <Route path="/simulador" element={<SimHome />} />
         <Route path="/activar/:token" element={<><Simulator /><ActivateCatcher /></>} />
         <Route path="/reset/:token" element={<><Simulator /><ResetCatcher /></>} />
-        <Route path="*" element={<Landing />} />
+        <Route path="*" element={Home} />
       </Routes>
       <Modals />
       <Toast />
