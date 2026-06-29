@@ -97,7 +97,7 @@ function StatsGrid({ match, txt }) {
 }
 
 export default function LivePanel() {
-  const { lang, livePanel, predictions } = useApp();
+  const { lang, livePanel, predictions, engine, boot, mc } = useApp();
   const txt = LX(lang).livePanel || {};
   const [, setNow] = useState(Date.now());
   useEffect(() => {
@@ -116,6 +116,10 @@ export default function LivePanel() {
   const myScore = (myp.goal_a != null && myp.goal_b != null) ? `${myp.goal_a}–${myp.goal_b}` : "";
   const realScore = (main && (main.status === "live" || main.status === "finished")) ? (main.score || "") : "";
   const queue = (panel.queue || []).filter((q) => !(main && q.home === main.home?.name && q.away === main.away?.name)).slice(0, 6);
+  const canPredictMain = !!(main && main.round != null && main.index != null && engine
+    && !engine.lock(main.round, main.index) && !engine.played(main.round, main.index)
+    && !engine.closed(main.round, main.index)
+    && boot?.state?.rounds_enabled?.[String(main.round)]);
 
   const impact = useMemo(() => {
     if (!main || main.round == null || main.index == null) return "";
@@ -155,11 +159,24 @@ export default function LivePanel() {
         <TeamBlock side={main.away} align="right" />
       </div>
 
-      {(myPick || realScore) && (
+      {main.round != null && main.index != null && (
         <div className="lp-pred">
           <span>Tu pronóstico</span>
-          <b>{myPick ? tn(myPick, lang) + (myScore ? ` ${myScore}` : "") : "—"}</b>
-          {realScore && <><span className="lp-sep">·</span><span>{main.status === "live" ? "En vivo" : "Resultado"}</span><b>{realScore}</b></>}
+          {canPredictMain ? (
+            <span className="lp-predin">
+              <input type="number" min="0" inputMode="numeric" aria-label={main.home?.name}
+                value={myp.goal_a != null ? myp.goal_a : ""}
+                onChange={(e) => mc.goal(main.round, main.index, "a", e.target.value, { a: main.home?.name, b: main.away?.name })} />
+              <em>–</em>
+              <input type="number" min="0" inputMode="numeric" aria-label={main.away?.name}
+                value={myp.goal_b != null ? myp.goal_b : ""}
+                onChange={(e) => mc.goal(main.round, main.index, "b", e.target.value, { a: main.home?.name, b: main.away?.name })} />
+            </span>
+          ) : (
+            <b>{myPick ? `${tn(myPick, lang)}${myScore ? ` ${myScore}` : ""}` : "—"}</b>
+          )}
+          {myPick && <b className="lp-predwin">→ {tn(myPick, lang)}</b>}
+          {realScore && <><span className="lp-sep">·</span><span>{main.status === "live" ? "En vivo" : "Resultado"}</span><b className="lp-realsc">{realScore}</b></>}
         </div>
       )}
 
