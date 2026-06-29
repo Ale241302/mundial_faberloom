@@ -288,3 +288,10 @@ select.fl-in{cursor:pointer}
 .rankp-row .ywho{font-family:var(--mono);font-size:9px;background:var(--coral);color:#fff;padding:1px 6px;border-radius:4px;letter-spacing:.5px}
 .rankp-row .pt{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap}
 .rankp-row .pt small{font-weight:400;color:var(--taupe);font-size:10px}
+.lp-real{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:-4px 0 12px;font-size:13px}
+.lp-real>span{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--taupe)}
+.lp-realbox{display:inline-flex;align-items:center;gap:5px}
+.lp-realbox input{width:34px;text-align:center;padding:3px;font-family:var(--mono);font-size:14px;background:var(--paper2);color:var(--taupe);border:1px dashed var(--line);border-radius:6px;cursor:not-allowed}
+.lp-realbox em{color:var(--taupe);font-style:normal;font-family:var(--mono)}
+.lp-realtag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--taupe)}
+.lp-realtag.live{color:#e23;font-weight:700}

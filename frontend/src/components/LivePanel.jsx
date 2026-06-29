@@ -176,7 +176,20 @@ export default function LivePanel() {
             <b>{myPick ? `${tn(myPick, lang)}${myScore ? ` ${myScore}` : ""}` : "—"}</b>
           )}
           {myPick && <b className="lp-predwin">→ {tn(myPick, lang)}</b>}
-          {realScore && <><span className="lp-sep">·</span><span>{main.status === "live" ? "En vivo" : "Resultado"}</span><b className="lp-realsc">{realScore}</b></>}
+        </div>
+      )}
+
+      {main.round != null && main.index != null && (
+        <div className="lp-real">
+          <span>Resultado real</span>
+          <span className="lp-realbox">
+            <input disabled value={main.home?.score != null ? main.home.score : ""} placeholder="–" />
+            <em>–</em>
+            <input disabled value={main.away?.score != null ? main.away.score : ""} placeholder="–" />
+          </span>
+          <em className={"lp-realtag" + (main.status === "live" ? " live" : "")}>
+            {main.status === "live" ? `EN VIVO ${fmtMinute(main.minute)}` : (main.status === "finished" ? "FINAL" : "aún no empieza")}
+          </em>
         </div>
       )}
 
