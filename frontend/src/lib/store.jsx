@@ -132,6 +132,11 @@ export function AppProvider({ children }) {
       if (engine && (engine.lock(r, i) || engine.played(r, i))) { toast("Ese partido ya se jugó · bloqueado"); return; }
       if (engine && engine.closed(r, i)) { toast("Ese partido está cerrado"); return; }
       if (boot && !boot.state.rounds_enabled[String(r)]) { toast("Las apuestas de esta etapa están cerradas"); return; }
+      if (predictions[r]?.[i]?.pick === team) {        // 2º clic en el mismo equipo => destildar
+        setPredictions((prev) => { const n = { ...prev }; if (n[r]) { const rr = { ...n[r] }; delete rr[i]; n[r] = rr; } return n; });
+        API.savePrediction({ round: r, index: i, pick: "", goal_a: null, goal_b: null, pen: "" }).catch((e) => toast(e.message));
+        return;
+      }
       persistPick(r, i, { pick: team });
     },
     goal: (r, i, side, val, m) => {
