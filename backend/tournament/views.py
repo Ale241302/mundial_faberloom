@@ -182,9 +182,25 @@ def _state_payload(state):
     }
 
 
+def _maybe_sync():
+    """Persiste a la BD los resultados que la FIFA marca como finalizados, como
+    mucho una vez cada 30s (lo dispara el polling de live_state; no depende de
+    celery). Así un partido terminado queda permanente: cuenta puntos y se ve
+    como 'RESULTADO REAL' aunque ya no esté en la ventana de 'en vivo'."""
+    from django.core.cache import cache
+    if not cache.add("fifa_sync_lock", 1, 30):   # add(): solo el primero pasa
+        return
+    try:
+        from .fifa import sync_results
+        sync_results()
+    except Exception:
+        pass
+
+
 def _live_state_payload(request):
     """Estado liviano para polling: evita recalcular Monte Carlo completo."""
     from .fifa import get_live_panel
+    _maybe_sync()
 
     eng = _score_engine()
     state = TournamentState.get()
