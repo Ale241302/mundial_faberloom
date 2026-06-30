@@ -25,6 +25,11 @@ docker compose up -d --build
 echo "==> limpieza de imágenes viejas"
 docker image prune -f >/dev/null 2>&1 || true
 
+echo "==> recargar proxy mwt-nginx (re-resolver IPs nuevas de los contenedores)"
+docker exec mwt-nginx nginx -s reload 2>/dev/null \
+  && echo "   proxy recargado" \
+  || echo "   (mwt-nginx no encontrado u omitido)"
+
 echo "==> estado"
 docker compose ps
 echo "==> Listo. Web:3300  API:8300/api/health/"
