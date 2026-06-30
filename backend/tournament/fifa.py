@@ -559,13 +559,18 @@ def notify_finished():
     from .models import Result, Prediction
     from emails.service import send_match_result_email
 
-    pendientes = Result.objects.filter(status="finished", notified=False)
-    if not pendientes:
+    pending_ids = list(Result.objects.filter(status="finished", notified=False)
+                       .values_list("id", flat=True))
+    # Claim ATÓMICO: marca notified=True con WHERE notified=False; solo el primer
+    # proceso lo consigue. Evita reenvíos por carrera entre workers / syncs.
+    claimed = [rid for rid in pending_ids
+               if Result.objects.filter(id=rid, notified=False).update(notified=True)]
+    if not claimed:
         return 0
     eng = build_engine()
     rounds = eng.resolve("fav")["rounds"]
     enviados = 0
-    for res in pendientes:
+    for res in Result.objects.filter(id__in=claimed):
         if res.round >= len(rounds):
             continue
         slots = rounds[res.round]
@@ -611,6 +616,4 @@ def notify_finished():
                 enviados += 1
             except Exception:
                 pass
-        res.notified = True
-        res.save(update_fields=["notified"])
     return enviados
