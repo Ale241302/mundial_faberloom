@@ -61,7 +61,10 @@ export default function RanaSponsor({ lang }) {
       <div className="rana-bar">
         <span className="rana-tag">
           <span className="rana-spk">{t.tag}</span>
-          <span className="rana-logo">Rana<span>Walk</span></span>
+          <img className="rana-logo-img"
+            src="https://ranawalk.com/images/logos%20rana/Logo-Rana-Walk-full-color_vertical.png"
+            alt="RanaWalk" role="button" title={t.cta}
+            onClick={() => !done && setOpen((o) => !o)} />
         </span>
         <button className="rana-cta" onClick={() => !done && setOpen((o) => !o)} disabled={busy || done}>
           {done ? "✓ " + t.done : t.cta}

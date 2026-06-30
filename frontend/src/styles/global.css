@@ -390,3 +390,9 @@ select.fl-in{cursor:pointer}
 .rankp-tab{background:var(--paper2);border:1px solid var(--line);color:var(--taupe);font-size:12px;font-family:var(--mono);
   padding:5px 14px;border-radius:8px;cursor:pointer}
 .rankp-tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* logo RanaWalk (imagen, clickeable) */
+.rana-logo-img{height:34px;width:auto;max-width:150px;display:block;cursor:pointer;border-radius:4px}
+.rana-logo-img:hover{opacity:.85}
+.rana.is-done .rana-logo-img{cursor:default}
+@media(max-width:480px){.rana-logo-img{height:28px}}
