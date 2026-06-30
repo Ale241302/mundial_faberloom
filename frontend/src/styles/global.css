@@ -396,3 +396,8 @@ select.fl-in{cursor:pointer}
 .rana-logo-img:hover{opacity:.85}
 .rana.is-done .rana-logo-img{cursor:default}
 @media(max-width:480px){.rana-logo-img{height:40px}}
+
+/* enlace "Sitio Web" del patrocinador */
+.rana-link{color:#2E9E5B;font-weight:600;font-size:13px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.rana-link:hover{text-decoration:underline}
+.rana-bar a{display:inline-flex;cursor:pointer}
