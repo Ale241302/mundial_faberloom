@@ -188,11 +188,25 @@ def _maybe_sync():
     celery). Así un partido terminado queda permanente: cuenta puntos y se ve
     como 'RESULTADO REAL' aunque ya no esté en la ventana de 'en vivo'."""
     from django.core.cache import cache
-    if not cache.add("fifa_sync_lock", 1, 30):   # add(): solo el primero pasa
+    if not cache.add("fifa_sync_lock", 1, 45):   # add(): solo el primero pasa
         return
+    # NO bloquear el request web: el sync (FIFA + correos SMTP) corre en un hilo
+    # en segundo plano. El claim atómico de notify_finished evita duplicados.
+    import threading
+
+    def _run():
+        from django.db import connections
+        try:
+            from .fifa import sync_results
+            sync_results()
+        except Exception:
+            pass
+        finally:
+            for conn in connections.all():
+                conn.close()
+
     try:
-        from .fifa import sync_results
-        sync_results()
+        threading.Thread(target=_run, daemon=True).start()
     except Exception:
         pass
 
